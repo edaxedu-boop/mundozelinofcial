@@ -5755,11 +5755,11 @@ function LandingPage({
               viewport={{ once: true }}
               className="relative"
             >
-              <div className="aspect-square bg-primary/5 rounded-[4rem] flex items-center justify-center p-12">
+              <div className="aspect-square bg-primary/5 rounded-[4rem] flex items-center justify-center p-4">
                 <img 
                   src="https://i.imgur.com/xEBLs7I.png" 
                   alt="Celular" 
-                  className="rounded-[3rem] shadow-2xl rotate-6 hover:rotate-0 transition-transform duration-500"
+                  className="rounded-[3rem] shadow-2xl transition-transform duration-500 hover:scale-105"
                 />
               </div>
               <div className="absolute -bottom-6 -left-6 bg-white p-6 rounded-3xl shadow-xl border border-slate-100 flex items-center gap-4">
