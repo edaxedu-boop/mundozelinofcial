@@ -5309,12 +5309,14 @@ function LandingPage({
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [activeView, setActiveView] = useState<'home' | 'catalogue' | 'offers' | 'category'>('home');
 
+  const [filterBranchId, setFilterBranchId] = useState<string | null>(null);
+
   const filteredProducts = inventory.filter((p: any) => {
-    const matchesBranch = p.branchId === selectedBranchId;
+    const matchesBranch = filterBranchId ? p.branchId === filterBranchId : true;
     if (activeView === 'catalogue') return matchesBranch;
     if (activeView === 'offers') return matchesBranch && (p.category === 'Ofertas' || p.price < 500);
     if (activeView === 'category') return matchesBranch && p.category === activeCategory;
-    return matchesBranch && (!activeCategory || p.category === activeCategory);
+    return true;
   });
 
   const displayTitle = activeView === 'catalogue' 
@@ -5328,6 +5330,7 @@ function LandingPage({
 
   const handleSetCategory = (cat: string) => {
     setActiveCategory(cat);
+    setFilterBranchId(null);
     setActiveView('category');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -5335,6 +5338,14 @@ function LandingPage({
   const handleSetView = (view: 'home' | 'catalogue' | 'offers') => {
     setActiveView(view);
     setActiveCategory(null);
+    setFilterBranchId(null);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleViewBranch = (branchId: string) => {
+    setFilterBranchId(branchId);
+    setActiveCategory(null);
+    setActiveView('catalogue');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -5942,10 +5953,7 @@ function LandingPage({
                     {branch.address}
                   </p>
                   <button 
-                    onClick={() => {
-                      setSelectedBranchId(branch.id);
-                      handleSetView('catalogue');
-                    }}
+                    onClick={() => handleViewBranch(branch.id)}
                     className="w-full py-4 rounded-2xl bg-slate-900 text-white font-bold hover:bg-primary transition-all flex items-center justify-center gap-2 group-hover:shadow-xl group-hover:shadow-primary/20"
                   >
                     <LayoutGrid className="w-4 h-4" /> Ver Productos
