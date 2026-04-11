@@ -37,7 +37,8 @@ import {
   Zap,
   Download,
   MapPin,
-  LayoutGrid
+  LayoutGrid,
+  Navigation2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
@@ -5295,19 +5296,45 @@ function LandingPage({
 }: any) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  const [activeView, setActiveView] = useState<'home' | 'catalogue' | 'offers' | 'category'>('home');
+
   const filteredProducts = inventory.filter((p: any) => {
     const matchesBranch = p.branchId === selectedBranchId;
-    const matchesCategory = !activeCategory || p.category === activeCategory;
-    return matchesBranch && matchesCategory;
+    if (activeView === 'catalogue') return matchesBranch;
+    if (activeView === 'offers') return matchesBranch && (p.category === 'Ofertas' || p.price < 500);
+    if (activeView === 'category') return matchesBranch && p.category === activeCategory;
+    return matchesBranch && (!activeCategory || p.category === activeCategory);
   });
+
+  const displayTitle = activeView === 'catalogue' 
+    ? 'Catálogo Completo' 
+    : activeView === 'offers' 
+      ? 'Ofertas Especiales' 
+      : activeCategory;
+
   const cartTotal = cart.reduce((acc: number, item: any) => acc + (item.price * item.quantity), 0);
   const cartCount = cart.reduce((acc: number, item: any) => acc + item.quantity, 0);
+
+  const handleSetCategory = (cat: string) => {
+    setActiveCategory(cat);
+    setActiveView('category');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleSetView = (view: 'home' | 'catalogue' | 'offers') => {
+    setActiveView(view);
+    setActiveCategory(null);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   return (
     <div className="min-h-screen bg-white">
       {/* Navbar */}
       <nav className="h-20 border-b border-slate-100 px-4 md:px-8 flex items-center justify-between sticky top-0 bg-white/80 backdrop-blur-md z-50">
-        <div className="flex items-center gap-3">
+        <div 
+          className="flex items-center gap-3 cursor-pointer"
+          onClick={() => handleSetView('home')}
+        >
           <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center shrink-0">
             <Smartphone className="text-white w-6 h-6" />
           </div>
@@ -5315,9 +5342,13 @@ function LandingPage({
         </div>
         
         <div className="hidden lg:flex items-center gap-8 text-sm font-bold text-slate-600">
-          <a href="#categorias" className="hover:text-primary transition-colors">Categorías</a>
-          <a href="#productos" className="hover:text-primary transition-colors">Catálogo</a>
-          <a href="#ofertas" className="hover:text-primary transition-colors">Ofertas</a>
+          <button onClick={() => {
+            const el = document.getElementById('categorias');
+            if (activeView === 'home') el?.scrollIntoView({ behavior: 'smooth' });
+            else handleSetView('home');
+          }} className="hover:text-primary transition-colors">Categorías</button>
+          <button onClick={() => handleSetView('catalogue')} className={cn("hover:text-primary transition-colors", activeView === 'catalogue' && "text-primary")}>Catálogo</button>
+          <button onClick={() => handleSetView('offers')} className={cn("hover:text-primary transition-colors", activeView === 'offers' && "text-primary")}>Ofertas</button>
           <a href="#servicios" className="hover:text-primary transition-colors">Reparación</a>
         </div>
 
@@ -5575,9 +5606,12 @@ function LandingPage({
             className="fixed inset-0 top-20 bg-white z-40 lg:hidden p-8 flex flex-col gap-8"
           >
             <div className="flex flex-col gap-6 text-xl font-bold text-slate-900">
-              <a href="#categorias" onClick={() => setIsMobileMenuOpen(false)} className="hover:text-primary transition-colors">Categorías</a>
-              <a href="#productos" onClick={() => setIsMobileMenuOpen(false)} className="hover:text-primary transition-colors">Catálogo</a>
-              <a href="#ofertas" onClick={() => setIsMobileMenuOpen(false)} className="hover:text-primary transition-colors">Ofertas</a>
+              <button 
+                onClick={() => { setIsMobileMenuOpen(false); handleSetView('home'); setTimeout(() => document.getElementById('categorias')?.scrollIntoView({ behavior: 'smooth' }), 100); }} 
+                className="text-left hover:text-primary transition-colors"
+              >Categorías</button>
+              <button onClick={() => { setIsMobileMenuOpen(false); handleSetView('catalogue'); }} className="text-left hover:text-primary transition-colors">Catálogo</button>
+              <button onClick={() => { setIsMobileMenuOpen(false); handleSetView('offers'); }} className="text-left hover:text-primary transition-colors">Ofertas</button>
               <a href="#servicios" onClick={() => setIsMobileMenuOpen(false)} className="hover:text-primary transition-colors">Reparación</a>
             </div>
             <div className="pt-8 border-t border-slate-100 flex flex-col gap-4 sm:hidden">
@@ -5598,9 +5632,7 @@ function LandingPage({
         )}
       </AnimatePresence>
 
-      {/* Navbar stays always */}
-
-      {!activeCategory ? (
+      {activeView === 'home' ? (
         <>
           {/* Hero */}
           <section className="py-20 px-8 max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
@@ -5623,9 +5655,12 @@ function LandingPage({
                 <a href="#tiendas" className="w-full sm:w-auto text-center bg-slate-900 text-white px-8 py-4 rounded-2xl font-bold hover:bg-slate-800 transition-all">
                   Ver Tiendas
                 </a>
-                <a href="#servicios" className="w-full sm:w-auto text-center border border-slate-200 text-slate-600 px-8 py-4 rounded-2xl font-bold hover:bg-slate-50 transition-all">
-                  Nuestros Servicios
-                </a>
+                <button 
+                  onClick={() => handleSetView('catalogue')}
+                  className="w-full sm:w-auto text-center border border-slate-200 text-slate-600 px-8 py-4 rounded-2xl font-bold hover:bg-slate-50 transition-all"
+                >
+                  Ver Catálogo
+                </button>
               </div>
             </motion.div>
             
@@ -5670,11 +5705,7 @@ function LandingPage({
           ].map((cat) => (
             <div 
               key={cat.name} 
-              onClick={() => {
-                setActiveCategory(cat.name);
-                const el = document.getElementById('productos');
-                el?.scrollIntoView({ behavior: 'smooth' });
-              }}
+              onClick={() => handleSetCategory(cat.name)}
               className={cn(
                 "glass-card p-8 text-center transition-all cursor-pointer group",
                 activeCategory === cat.name ? "border-primary bg-primary/5 ring-2 ring-primary/20 scale-105" : "hover:border-primary"
@@ -5697,7 +5728,7 @@ function LandingPage({
 
         </>
       ) : (
-        /* VISTA DE PÁGINA DE CATEGORÍA SOLA */
+        /* VISTA DE PÁGINA DEDICADA (CATÁLOGO / OFERTAS / CATEGORÍA) */
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -5706,32 +5737,24 @@ function LandingPage({
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-8 mb-16 pt-8">
             <div className="flex-1">
               <button 
-                onClick={() => setActiveCategory(null)}
+                onClick={() => handleSetView('home')}
                 className="group flex items-center gap-2 text-primary font-bold text-sm mb-6 hover:gap-3 transition-all"
               >
                 <ArrowUpRight className="w-5 h-5 rotate-[225deg]" /> 
                 <span className="underline decoration-primary/30 underline-offset-4">Volver al Inicio</span>
               </button>
               <h2 className="text-5xl md:text-7xl font-black text-slate-900 tracking-tighter mb-4 italic">
-                {activeCategory}
+                {displayTitle}
               </h2>
               <div className="h-1.5 w-32 bg-primary rounded-full mb-6" />
               <p className="text-xl text-slate-500 font-medium max-w-2xl leading-relaxed">
-                Mostrando la mejor selección de {activeCategory.toLowerCase()} disponibles en esta sucursal de Mundo Celular Zelin.
+                {activeView === 'catalogue' 
+                   ? 'Explora todos nuestros productos disponibles en preventa y entrega inmediata.'
+                   : activeView === 'offers'
+                     ? 'Los mejores precios del mercado en equipos seleccionados. Actualizado semanalmente.'
+                     : `Mostrando la mejor selección de ${activeCategory?.toLowerCase()} disponibles.`
+                }
               </p>
-            </div>
-            <div className="w-full md:w-80 shrink-0">
-               <div className="glass-card p-6 bg-slate-50/50 backdrop-blur-sm">
-                  <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-3 block">Buscar en esta sección</label>
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
-                    <input 
-                      type="text" 
-                      placeholder={`Buscar ${activeCategory.toLowerCase()}...`}
-                      className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-primary/20 outline-none text-sm bg-white"
-                    />
-                  </div>
-               </div>
             </div>
           </div>
 
@@ -5792,7 +5815,7 @@ function LandingPage({
         </motion.div>
       )}
 
-      {!activeCategory && (
+      {activeView === 'home' && (
         <>
           {/* Services */}
           <section id="servicios" className="py-24 bg-slate-900 text-white px-8">
@@ -5868,6 +5891,53 @@ function LandingPage({
                   <span className="font-bold text-slate-900">{t.name}</span>
                 </div>
               </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Nuestras Tiendas */}
+      <section id="tiendas" className="py-24 px-8 bg-slate-50">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-16">
+            <div>
+              <span className="text-primary font-black uppercase tracking-[0.2em] text-xs mb-4 block">Presencia Local</span>
+              <h2 className="text-4xl md:text-5xl font-black text-slate-900 leading-tight">Nuestras <span className="text-primary italic">Sucursales.</span></h2>
+            </div>
+            <p className="text-slate-500 max-w-md font-medium">Visítanos y prueba los últimos lanzamientos en nuestras zonas de experiencia.</p>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
+            {branches.map((branch: any) => (
+              <motion.div 
+                key={branch.id}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                className="group glass-card overflow-hidden bg-white"
+              >
+                <div className="aspect-[16/9] bg-slate-100 relative overflow-hidden">
+                  <img 
+                    src={branch.image || `https://images.unsplash.com/photo-1556740758-90de374c12ad?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80`} 
+                    alt={branch.name}
+                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-slate-900/60 to-transparent" />
+                  <div className="absolute bottom-6 left-6 right-6 flex items-center justify-between">
+                    <span className="px-3 py-1 bg-primary text-white text-[10px] font-bold rounded-full uppercase tracking-widest">Abierto</span>
+                  </div>
+                </div>
+                <div className="p-8">
+                  <h3 className="text-xl font-bold text-slate-900 mb-2">{branch.name}</h3>
+                  <p className="text-slate-500 text-sm mb-6 flex items-start gap-2">
+                    <MapPin className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+                    {branch.address}
+                  </p>
+                  <button className="w-full py-4 rounded-2xl bg-slate-900 text-white font-bold hover:bg-primary transition-all flex items-center justify-center gap-2 group-hover:shadow-xl group-hover:shadow-primary/20">
+                    <Navigation2 className="w-4 h-4" /> Ver en Google Maps
+                  </button>
+                </div>
+              </motion.div>
             ))}
           </div>
         </div>
