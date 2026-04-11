@@ -6182,7 +6182,7 @@ function LandingPage({
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="fixed inset-4 md:inset-auto md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:w-full md:max-w-md bg-white z-[110] rounded-[2.5rem] shadow-2xl p-8 md:p-10"
+              className="fixed inset-4 md:inset-auto md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:w-full md:max-w-md max-h-[90vh] bg-white z-[110] rounded-[2.5rem] shadow-2xl p-8 md:p-10 overflow-y-auto"
             >
               <button 
                 onClick={() => setIsRepairModalOpen(false)}
