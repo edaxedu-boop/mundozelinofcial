@@ -5520,7 +5520,7 @@ function LandingPage({
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="fixed inset-4 md:inset-auto md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:w-full md:max-w-4xl max-h-[90vh] bg-white z-[90] rounded-[2.5rem] shadow-2xl flex flex-col md:flex-row overflow-hidden"
+              className="fixed inset-4 md:inset-auto md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:w-full md:max-w-4xl max-h-[90vh] bg-white z-[90] rounded-[2.5rem] shadow-2xl flex flex-col md:flex-row overflow-y-auto md:overflow-hidden"
             >
               <button 
                 onClick={() => setSelectedProduct(null)}
@@ -5542,8 +5542,8 @@ function LandingPage({
                 </div>
               </div>
 
-              <div className="w-full md:w-1/2 flex flex-col bg-white overflow-hidden">
-                <div className="flex-1 overflow-y-auto p-8 md:p-12">
+              <div className="w-full md:w-1/2 flex flex-col bg-white">
+                <div className="p-8 md:p-12 md:flex-1 md:overflow-y-auto">
                   <span className="text-primary font-bold text-sm uppercase tracking-widest mb-2 block">
                     {selectedProduct.category}
                   </span>
@@ -5578,7 +5578,7 @@ function LandingPage({
                   </div>
                 </div>
 
-                <div className="p-6 md:p-8 bg-slate-50 border-t border-slate-100 flex flex-col sm:flex-row gap-4 shrink-0">
+                <div className="p-6 md:p-8 bg-slate-50 border-t border-slate-100 flex flex-col sm:flex-row gap-4 md:shrink-0">
                   <button 
                     onClick={() => { addToCart(selectedProduct); setSelectedProduct(null); }}
                     className="flex-1 py-4 bg-white text-slate-900 rounded-2xl font-bold border border-slate-200 hover:bg-slate-50 transition-all flex items-center justify-center gap-2 shadow-sm"
