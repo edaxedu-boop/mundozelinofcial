@@ -10,7 +10,7 @@ export async function generateInventoryReport(data: any) {
 
   try {
     const response = await insforge.ai.chat.completions.create({
-      model: "deepseek/deepseek-v3.2",
+      model: "deepseek/deepseek-v3",
       messages: [
         { role: "system", content: "Eres un experto analista de negocios para tiendas de tecnología." },
         { role: "user", content: prompt }
