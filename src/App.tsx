@@ -501,7 +501,7 @@ export default function App() {
       try {
         const { data, error } = await insforge.database.from('branches').select('*');
         if (error) throw error;
-        setBranches(data);
+        setBranches(snakeToCamel(data));
         if (data.length > 0) setSelectedBranchId(data[0].id);
       } catch (err) {
         console.error("Error fetching branches, using mock", err);
@@ -516,7 +516,7 @@ export default function App() {
       try {
         const { data, error } = await insforge.database.from('products').select('*');
         if (error) throw error;
-        setInventory(data);
+        setInventory(snakeToCamel(data));
       } catch (err) {
         console.error("Error fetching inventory, using mock", err);
         setInventory(MOCK_DATA.inventory);
