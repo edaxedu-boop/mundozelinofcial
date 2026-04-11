@@ -5780,7 +5780,7 @@ function LandingPage({
             >
               <div className="aspect-square bg-primary/5 rounded-[4rem] flex items-center justify-center p-12">
                 <img 
-                  src="https://picsum.photos/seed/phone/800/800" 
+                  src="https://i.imgur.com/xEBLs7I.png" 
                   alt="Celular" 
                   className="rounded-[3rem] shadow-2xl rotate-6 hover:rotate-0 transition-transform duration-500"
                 />
