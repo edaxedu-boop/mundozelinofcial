@@ -5351,6 +5351,24 @@ function LandingPage({
 
   return (
     <div className="min-h-screen bg-white">
+
+      {/* Botón Flotante WhatsApp */}
+      <a
+        href="https://wa.me/51987654321?text=Hola%20Mundo%20Celular%20Zelin%2C%20me%20interesa%20un%20producto"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="fixed bottom-6 right-5 z-[200] flex items-center gap-3 bg-[#25D366] text-white pl-4 pr-5 py-3 rounded-full shadow-2xl hover:bg-[#20ba59] hover:scale-105 transition-all duration-300 group"
+        style={{ boxShadow: '0 8px 32px rgba(37,211,102,0.45)' }}
+      >
+        <span className="flex items-center justify-center w-8 h-8 shrink-0">
+          <svg viewBox="0 0 24 24" fill="currentColor" className="w-7 h-7">
+            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.569-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
+            <path d="M12 0C5.373 0 0 5.373 0 12c0 2.117.554 4.103 1.523 5.827L.057 23.862a.5.5 0 00.613.613l6.116-1.455A11.937 11.937 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.97 0-3.81-.538-5.39-1.472l-.385-.228-3.993.951.968-3.9-.249-.4A9.956 9.956 0 012 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/>
+          </svg>
+        </span>
+        <span className="font-bold text-sm whitespace-nowrap hidden sm:block">¡Escríbenos!</span>
+      </a>
+
       {/* Navbar */}
       <nav className="h-20 border-b border-slate-100 px-4 md:px-8 flex items-center justify-between sticky top-0 bg-white/80 backdrop-blur-md z-50">
         <div 
