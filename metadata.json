@@ -1,0 +1,7 @@
+{
+  "name": "Remix: Mundo Celular Zelin",
+  "description": "Tu tienda de confianza para los mejores smartphones, accesorios premium y servicio técnico especializado. ¡Visítanos!",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
