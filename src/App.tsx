@@ -5360,6 +5360,29 @@ function LandingPage({
     issue: ''
   });
 
+  const [searchRepairId, setSearchRepairId] = useState('');
+  const [searchResult, setSearchResult] = useState<any>(null);
+  const [isSearchingRepair, setIsSearchingRepair] = useState(false);
+  const [hasSearchedRepair, setHasSearchedRepair] = useState(false);
+
+  const handleCheckRepair = async () => {
+    if (!searchRepairId) return;
+    setIsSearchingRepair(true);
+    setHasSearchedRepair(false);
+    try {
+      const id = searchRepairId.replace('#', '').trim();
+      const { data, error } = await insforge.from('technical_services').select('*').eq('id', id).maybeSingle();
+      if (error) throw error;
+      setSearchResult(data ? snakeToCamel(data) : null);
+    } catch (err) {
+      console.error(err);
+      setSearchResult(null);
+    } finally {
+      setIsSearchingRepair(false);
+      setHasSearchedRepair(true);
+    }
+  };
+
   const handleRepairSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const phoneNumber = settings?.phone?.replace(/[^0-9]/g, '') || "51916857022";
@@ -6051,12 +6074,66 @@ function LandingPage({
                 <input 
                   type="text" 
                   placeholder="Código de servicio (ej: #12345)" 
-                  className="flex-1 bg-white/10 border border-white/20 rounded-2xl px-6 py-4 outline-none focus:ring-2 focus:ring-primary/50"
+                  value={searchRepairId}
+                  onChange={(e) => setSearchRepairId(e.target.value)}
+                  className="flex-1 bg-white/10 border border-white/20 rounded-2xl px-6 py-4 outline-none focus:ring-2 focus:ring-primary/50 text-white"
                 />
-                <button className="bg-white text-slate-900 px-8 py-4 rounded-2xl font-bold hover:bg-primary hover:text-white transition-all">
-                  Consultar
+                <button 
+                  onClick={handleCheckRepair}
+                  disabled={isSearchingRepair}
+                  className="bg-white text-slate-900 px-8 py-4 rounded-2xl font-bold hover:bg-primary hover:text-white transition-all disabled:opacity-50 flex items-center justify-center min-w-[140px]"
+                >
+                  {isSearchingRepair ? (
+                    <div className="w-5 h-5 border-2 border-slate-900 border-t-transparent rounded-full animate-spin" />
+                  ) : 'Consultar'}
                 </button>
               </div>
+
+              {hasSearchedRepair && (
+                  <motion.div 
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="mt-8 p-6 bg-white/10 border border-white/20 rounded-[2rem] text-left"
+                  >
+                      {searchResult ? (
+                          <div className="space-y-4">
+                              <div className="flex justify-between items-start">
+                                  <div>
+                                      <h4 className="text-xl font-bold text-white">{searchResult.device}</h4>
+                                      <p className="text-slate-400 text-sm">Ticket: #{searchResult.id.slice(0, 8)}</p>
+                                  </div>
+                                  <span className={cn(
+                                      "px-3 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider",
+                                      searchResult.status === 'LISTO' || searchResult.status === 'ENTREGADO' ? "bg-green-500 text-white" : "bg-primary text-white"
+                                  )}>
+                                      {searchResult.status.replace('_', ' ')}
+                                  </span>
+                              </div>
+                              <div className="grid grid-cols-2 gap-4 pt-4 border-t border-white/10">
+                                  <div>
+                                      <p className="text-slate-400 text-[10px] uppercase font-bold mb-1">Cliente</p>
+                                      <p className="font-medium text-white">{searchResult.customerName}</p>
+                                  </div>
+                                  <div>
+                                      <p className="text-slate-400 text-[10px] uppercase font-bold mb-1">Costo</p>
+                                      <p className="font-bold text-primary">S/ {searchResult.cost}</p>
+                                  </div>
+                              </div>
+                              {searchResult.technicianNotes && (
+                                  <div className="pt-4 border-t border-white/10">
+                                      <p className="text-slate-400 text-[10px] uppercase font-bold mb-1">Estado Detalle</p>
+                                      <p className="text-sm italic text-slate-300">"{searchResult.technicianNotes}"</p>
+                                  </div>
+                              )}
+                          </div>
+                      ) : (
+                          <div className="flex items-center gap-4 text-red-400 p-2">
+                              <AlertCircle className="w-6 h-6 shrink-0" />
+                              <p className="font-bold text-sm">Código no encontrado. Verifica tu ticket e intenta de nuevo.</p>
+                          </div>
+                      )}
+                  </motion.div>
+              )}
             </div>
           </div>
         </div>
