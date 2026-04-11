@@ -5918,14 +5918,11 @@ function LandingPage({
               >
                 <div className="aspect-[16/9] bg-slate-100 relative overflow-hidden">
                   <img 
-                    src={branch.image || `https://images.unsplash.com/photo-1556740758-90de374c12ad?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80`} 
+                    src={branch.image || `https://images.unsplash.com/photo-1441986300917-64674bd600d8?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80`} 
                     alt={branch.name}
                     className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-slate-900/60 to-transparent" />
-                  <div className="absolute bottom-6 left-6 right-6 flex items-center justify-between">
-                    <span className="px-3 py-1 bg-primary text-white text-[10px] font-bold rounded-full uppercase tracking-widest">Abierto</span>
-                  </div>
+                  <div className="absolute inset-0 bg-gradient-to-t from-slate-900/40 to-transparent" />
                 </div>
                 <div className="p-8">
                   <h3 className="text-xl font-bold text-slate-900 mb-2">{branch.name}</h3>
@@ -5933,8 +5930,14 @@ function LandingPage({
                     <MapPin className="w-4 h-4 text-primary shrink-0 mt-0.5" />
                     {branch.address}
                   </p>
-                  <button className="w-full py-4 rounded-2xl bg-slate-900 text-white font-bold hover:bg-primary transition-all flex items-center justify-center gap-2 group-hover:shadow-xl group-hover:shadow-primary/20">
-                    <Navigation2 className="w-4 h-4" /> Ver en Google Maps
+                  <button 
+                    onClick={() => {
+                      setSelectedBranchId(branch.id);
+                      handleSetView('catalogue');
+                    }}
+                    className="w-full py-4 rounded-2xl bg-slate-900 text-white font-bold hover:bg-primary transition-all flex items-center justify-center gap-2 group-hover:shadow-xl group-hover:shadow-primary/20"
+                  >
+                    <LayoutGrid className="w-4 h-4" /> Ver Productos
                   </button>
                 </div>
               </motion.div>
