@@ -1550,7 +1550,7 @@ export default function App() {
                   services={filteredServices} 
                 />
               )}
-              {activeTab === 'reports' && <ReportsView aiReport={aiReport} onGenerate={generateAIAnalysis} isGenerating={isGeneratingReport} />}
+              {activeTab === 'reports' && <ReportsView aiReport={aiReport} onGenerate={generateAIAnalysis} isGenerating={isGeneratingReport} onDownload={handleDownloadPDF} onShare={handleShareReport} />}
               {activeTab === 'branches' && (
                 <BranchesView 
                   branches={branches} 
@@ -5316,7 +5316,7 @@ function TechnicalServiceView({ services, user }: any) {
   );
 }
 
-function ReportsView({ aiReport, onGenerate, isGenerating }: any) {
+function ReportsView({ aiReport, onGenerate, isGenerating, onDownload, onShare }: any) {
   return (
     <div className="space-y-8">
       <div className="glass-card p-8 text-center max-w-2xl mx-auto">
@@ -5364,13 +5364,13 @@ function ReportsView({ aiReport, onGenerate, isGenerating }: any) {
               </div>
               <div className="flex items-center gap-3">
                 <button 
-                  onClick={handleDownloadPDF}
+                  onClick={onDownload}
                   className="bg-white/10 hover:bg-white/20 text-white px-5 py-3 rounded-xl font-bold text-sm transition-all flex items-center gap-2 backdrop-blur-md border border-white/5"
                 >
                   <FileText className="w-4 h-4" /> PDF
                 </button>
                 <button 
-                  onClick={handleShareReport}
+                  onClick={onShare}
                   className="bg-primary text-white px-5 py-3 rounded-xl font-bold text-sm hover:bg-primary/90 transition-all shadow-lg shadow-primary/20 flex items-center gap-2"
                 >
                   <Upload className="w-4 h-4 rotate-180" /> Compartir
