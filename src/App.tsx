@@ -5513,8 +5513,8 @@ function LandingPage({
                   alt={selectedProduct.name}
                   className="w-full h-auto max-h-[300px] md:max-h-full object-contain drop-shadow-2xl"
                 />
-                <div className="absolute bottom-4 left-4">
-                  <span className="px-3 py-1 bg-white rounded-xl text-[10px] font-bold uppercase tracking-widest shadow-sm border border-slate-100">
+                <div className="absolute top-4 left-4 z-10">
+                  <span className="px-3 py-1 bg-white/90 backdrop-blur-sm rounded-xl text-[10px] font-bold uppercase tracking-widest shadow-sm border border-slate-100">
                     {selectedProduct.brand}
                   </span>
                 </div>
