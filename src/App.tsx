@@ -1138,6 +1138,80 @@ export default function App() {
     }
   };
 
+  const handleDownloadPDF = () => {
+    if (!aiReport) return;
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+      printWindow.document.write(`
+        <html>
+          <head>
+            <title>Reporte de Inteligencia - Mundo Celular Zelin</title>
+            <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+            <style>
+              @media print {
+                .no-print { display: none; }
+                body { padding: 40px; }
+              }
+              body { font-family: sans-serif; }
+              table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+              th, td { border: 1px solid #e2e8f0; padding: 12px; text-align: left; }
+              th { background-color: #f8fafc; font-weight: bold; }
+              h1, h2, h3 { font-weight: 800; color: #0f172a; margin-top: 2em; margin-bottom: 0.5em; }
+              h1 { font-size: 2.5em; margin-top: 0; }
+            </style>
+          </head>
+          <body class="bg-white p-10">
+            <div class="max-w-4xl mx-auto">
+              <header class="flex items-center justify-between mb-8 border-b pb-8">
+                <div>
+                  <h1 class="text-3xl font-black text-slate-900 m-0">Mundo Celular Zelin</h1>
+                  <p class="text-slate-500 font-bold uppercase tracking-widest text-xs mt-1">Análisis de Inteligencia de Negocios</p>
+                </div>
+                <div class="text-right text-xs text-slate-400">
+                  <p>Fecha: ${new Date().toLocaleDateString('es-PE')}</p>
+                  <p>Generado por: Mundo Celular AI</p>
+                </div>
+              </header>
+              <div class="prose max-w-none">
+                ${document.querySelector('.prose')?.innerHTML || "Contenido del reporte..."}
+              </div>
+              <footer class="mt-12 pt-8 border-t border-slate-100 text-center text-[10px] text-slate-300 italic">
+                <p>Este reporte es de carácter informativo y generado automáticamente basado en los datos del sistema.</p>
+              </footer>
+            </div>
+            <script>
+              window.onload = () => {
+                setTimeout(() => {
+                  window.print();
+                  window.close();
+                }, 1000);
+              };
+            </script>
+          </body>
+        </html>
+      `);
+      printWindow.document.close();
+    }
+  };
+
+  const handleShareReport = async () => {
+    if (!aiReport) return;
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'Reporte de Inteligencia - Mundo Celular Zelin',
+          text: 'Acabo de generar este reporte de inteligencia de negocios para Mundo Celular Zelin.',
+          url: window.location.href
+        });
+      } catch (err) {
+        console.error('Error sharing report', err);
+      }
+    } else {
+      navigator.clipboard.writeText(aiReport);
+      alert('Contenido del reporte copiado al portapapeles');
+    }
+  };
+
   if (loading) return <LoadingSplash />;
 
   if (isLandingView || (!user && !showAuth)) {
@@ -5289,10 +5363,16 @@ function ReportsView({ aiReport, onGenerate, isGenerating }: any) {
                 </div>
               </div>
               <div className="flex items-center gap-3">
-                <button className="bg-white/10 hover:bg-white/20 text-white px-5 py-3 rounded-xl font-bold text-sm transition-all flex items-center gap-2 backdrop-blur-md border border-white/5">
+                <button 
+                  onClick={handleDownloadPDF}
+                  className="bg-white/10 hover:bg-white/20 text-white px-5 py-3 rounded-xl font-bold text-sm transition-all flex items-center gap-2 backdrop-blur-md border border-white/5"
+                >
                   <FileText className="w-4 h-4" /> PDF
                 </button>
-                <button className="bg-primary text-white px-5 py-3 rounded-xl font-bold text-sm hover:bg-primary/90 transition-all shadow-lg shadow-primary/20 flex items-center gap-2">
+                <button 
+                  onClick={handleShareReport}
+                  className="bg-primary text-white px-5 py-3 rounded-xl font-bold text-sm hover:bg-primary/90 transition-all shadow-lg shadow-primary/20 flex items-center gap-2"
+                >
                   <Upload className="w-4 h-4 rotate-180" /> Compartir
                 </button>
               </div>
