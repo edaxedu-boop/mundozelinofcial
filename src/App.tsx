@@ -5352,6 +5352,28 @@ function LandingPage({
   const [activeView, setActiveView] = useState<'home' | 'catalogue' | 'offers' | 'category'>('home');
 
   const [filterBranchId, setFilterBranchId] = useState<string | null>(null);
+  const [isRepairModalOpen, setIsRepairModalOpen] = useState(false);
+  const [repairForm, setRepairForm] = useState({
+    name: '',
+    phone: '',
+    device: '',
+    issue: ''
+  });
+
+  const handleRepairSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const phoneNumber = settings?.phone?.replace(/[^0-9]/g, '') || "51916857022";
+    const message = `*Solicitud de Reparación*\n\n` +
+      `*Nombre:* ${repairForm.name}\n` +
+      `*Celular:* ${repairForm.phone}\n` +
+      `*Equipo:* ${repairForm.device}\n` +
+      `*Falla:* ${repairForm.issue}\n\n` +
+      `Hola, me gustaría solicitar un presupuesto para reparar mi equipo.`;
+    
+    window.open(`https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`, '_blank');
+    setIsRepairModalOpen(false);
+    setRepairForm({ name: '', phone: '', device: '', issue: '' });
+  };
 
   const filteredProducts = inventory.filter((p: any) => {
     const matchesBranch = filterBranchId ? p.branchId === filterBranchId : true;
@@ -6014,7 +6036,10 @@ function LandingPage({
                 </div>
               ))}
             </div>
-            <button className="bg-primary text-white px-8 py-4 rounded-2xl font-bold hover:bg-primary/90 transition-all shadow-xl shadow-primary/20">
+            <button 
+              onClick={() => setIsRepairModalOpen(true)}
+              className="bg-primary text-white px-8 py-4 rounded-2xl font-bold hover:bg-primary/90 transition-all shadow-xl shadow-primary/20"
+            >
               Solicitar Reparación
             </button>
           </div>
@@ -6141,6 +6166,96 @@ function LandingPage({
       </section>
         </>
       )}
+
+      {/* Repair Request Modal */}
+      <AnimatePresence>
+        {isRepairModalOpen && (
+          <>
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsRepairModalOpen(false)}
+              className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[100]"
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="fixed inset-4 md:inset-auto md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:w-full md:max-w-md bg-white z-[110] rounded-[2.5rem] shadow-2xl p-8 md:p-10"
+            >
+              <button 
+                onClick={() => setIsRepairModalOpen(false)}
+                className="absolute top-6 right-6 p-2 hover:bg-slate-100 rounded-full transition-all"
+              >
+                <X className="w-6 h-6 text-slate-400" />
+              </button>
+
+              <div className="text-center mb-8">
+                <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                  <Wrench className="text-primary w-8 h-8" />
+                </div>
+                <h3 className="text-2xl font-black text-slate-900">Solicitar Reparación</h3>
+                <p className="text-slate-500 mt-2 text-sm">Completa los datos y te contactaremos por WhatsApp</p>
+              </div>
+
+              <form onSubmit={handleRepairSubmit} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 ml-1">Tu Nombre</label>
+                  <input 
+                    required
+                    type="text"
+                    value={repairForm.name}
+                    onChange={(e) => setRepairForm({...repairForm, name: e.target.value})}
+                    placeholder="Ej: Juan Pérez"
+                    className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-6 py-4 outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 ml-1">WhatsApp</label>
+                  <input 
+                    required
+                    type="tel"
+                    value={repairForm.phone}
+                    onChange={(e) => setRepairForm({...repairForm, phone: e.target.value})}
+                    placeholder="Ej: 999 999 999"
+                    className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-6 py-4 outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 ml-1">Equipo / Modelo</label>
+                  <input 
+                    required
+                    type="text"
+                    value={repairForm.device}
+                    onChange={(e) => setRepairForm({...repairForm, device: e.target.value})}
+                    placeholder="Ej: iPhone 13 Pro"
+                    className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-6 py-4 outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 ml-1">¿Qué falla tiene?</label>
+                  <textarea 
+                    required
+                    value={repairForm.issue}
+                    onChange={(e) => setRepairForm({...repairForm, issue: e.target.value})}
+                    placeholder="Ej: Pantalla rota, no carga..."
+                    rows={3}
+                    className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-6 py-4 outline-none focus:ring-2 focus:ring-primary/20 transition-all resize-none"
+                  />
+                </div>
+                <button 
+                  type="submit"
+                  className="w-full bg-primary text-white py-5 rounded-2xl font-bold hover:bg-primary/90 transition-all shadow-xl shadow-primary/20 flex items-center justify-center gap-3 mt-4"
+                >
+                  <MessageCircle className="w-6 h-6" />
+                  Enviar por WhatsApp
+                </button>
+              </form>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
 
       {/* Footer */}
       <footer className="py-12 border-t border-slate-100 px-8">
