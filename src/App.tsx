@@ -5748,6 +5748,92 @@ function LandingPage({
         </div>
       </section>
 
+      {/* Productos por Sucursal */}
+      {branches.map((branch: any) => {
+        const branchProducts = inventory.filter((p: any) => p.branchId === branch.id).slice(0, 8);
+        if (branchProducts.length === 0) return null;
+        return (
+          <section key={branch.id} className="py-16 px-4 md:px-8 max-w-7xl mx-auto">
+            <div className="flex items-end justify-between mb-10">
+              <div>
+                <span className="text-primary font-black uppercase tracking-[0.2em] text-xs mb-2 block">
+                  <MapPin className="w-3 h-3 inline mr-1" />{branch.address}
+                </span>
+                <h2 className="text-3xl md:text-4xl font-black text-slate-900">{branch.name}</h2>
+              </div>
+              <button
+                onClick={() => handleViewBranch(branch.id)}
+                className="hidden md:flex items-center gap-2 text-primary font-bold text-sm hover:gap-3 transition-all shrink-0"
+              >
+                Ver catálogo completo <ArrowUpRight className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
+              {branchProducts.map((product: any) => (
+                <motion.div
+                  key={product.id}
+                  initial={{ opacity: 0, y: 10 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  onClick={() => setSelectedProduct(product)}
+                  className="glass-card group hover:shadow-xl hover:shadow-primary/10 transition-all duration-300 overflow-hidden cursor-pointer bg-white"
+                >
+                  <div className="aspect-square bg-slate-50 p-4 flex items-center justify-center relative overflow-hidden">
+                    <img
+                      src={getPublicUrl(product.image) || "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?ixlib=rb-1.2.1&auto=format&fit=crop&w=400&q=80"}
+                      alt={product.name}
+                      className="w-full h-full object-contain group-hover:scale-110 transition-transform duration-500"
+                    />
+                    {product.stock === 0 && (
+                      <div className="absolute inset-0 bg-white/80 flex items-center justify-center">
+                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Agotado</span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="p-4">
+                    <p className="text-[10px] text-slate-400 uppercase font-black tracking-widest mb-1">{product.brand}</p>
+                    <h4 className="font-bold text-slate-900 text-sm leading-tight mb-3 truncate">{product.name}</h4>
+                    <div className="flex items-center justify-between">
+                      <span className="text-lg font-black text-primary">S/ {product.price.toLocaleString()}</span>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); addToCart(product); }}
+                        disabled={product.stock === 0}
+                        className={cn(
+                          "w-9 h-9 flex items-center justify-center rounded-xl transition-all",
+                          product.stock > 0
+                            ? "bg-primary text-white hover:bg-slate-900 shadow-lg shadow-primary/20"
+                            : "bg-slate-100 text-slate-300 cursor-not-allowed"
+                        )}
+                      >
+                        <Plus className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+
+            <div className="mt-8 text-center md:hidden">
+              <button
+                onClick={() => handleViewBranch(branch.id)}
+                className="inline-flex items-center gap-2 bg-primary text-white px-8 py-4 rounded-2xl font-bold hover:bg-primary/90 transition-all shadow-lg shadow-primary/20"
+              >
+                <LayoutGrid className="w-4 h-4" /> Ver catálogo completo de {branch.name}
+              </button>
+            </div>
+            <div className="hidden md:flex justify-center mt-8">
+              <button
+                onClick={() => handleViewBranch(branch.id)}
+                className="inline-flex items-center gap-2 border-2 border-primary text-primary px-8 py-4 rounded-2xl font-bold hover:bg-primary hover:text-white transition-all"
+              >
+                <LayoutGrid className="w-4 h-4" /> Ver todos los productos de {branch.name}
+              </button>
+            </div>
+          </section>
+        );
+      })}
+
         </>
       ) : (
         /* VISTA DE PÁGINA DEDICADA (CATÁLOGO / OFERTAS / CATEGORÍA) */
