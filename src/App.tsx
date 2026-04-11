@@ -73,6 +73,17 @@ function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+// Añade el apikey a URLs de InsForge Storage para renderizado público
+function getPublicUrl(url?: string): string | undefined {
+  if (!url) return undefined;
+  const anonKey = import.meta.env.VITE_INSFORGE_ANON_KEY;
+  if (url.includes('insforge.app') && anonKey) {
+    const separator = url.includes('?') ? '&' : '?';
+    return `${url}${separator}apikey=${anonKey}`;
+  }
+  return url;
+}
+
 function snakeToCamel(obj: any): any {
   if (Array.isArray(obj)) {
     return obj.map(v => snakeToCamel(v));
@@ -3854,7 +3865,7 @@ function BranchesView({ branches, onAdd, onUpdate, onDelete, onViewInventory }: 
             <div className="h-44 w-full relative overflow-hidden bg-slate-50">
               {branch.imageUrl ? (
                 <img 
-                  src={branch.imageUrl} 
+                  src={getPublicUrl(branch.imageUrl)} 
                   alt={branch.name} 
                   className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                 />
@@ -5918,7 +5929,7 @@ function LandingPage({
               >
                 <div className="aspect-[16/9] bg-slate-100 relative overflow-hidden">
                   <img 
-                    src={branch.image || `https://images.unsplash.com/photo-1441986300917-64674bd600d8?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80`} 
+                    src={getPublicUrl(branch.imageUrl) || `https://images.unsplash.com/photo-1441986300917-64674bd600d8?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80`} 
                     alt={branch.name}
                     className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
                   />

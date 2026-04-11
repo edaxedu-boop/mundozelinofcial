@@ -25,7 +25,7 @@ export interface Branch {
   id: string;
   name: string;
   address: string;
-  image?: string;
+  imageUrl?: string;
 }
 
 export interface SaleItem {
