@@ -5451,7 +5451,7 @@ function LandingPage({
     setHasSearchedRepair(false);
     try {
       const id = searchRepairId.replace('#', '').trim();
-      const { data, error } = await insforge.from('technical_services').select('*').eq('id', id).maybeSingle();
+      const { data, error } = await insforge.database.from('technical_services').select('*').eq('id', id).maybeSingle();
       if (error) throw error;
       setSearchResult(data ? snakeToCamel(data) : null);
     } catch (err) {
