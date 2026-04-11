@@ -99,6 +99,53 @@ function snakeToCamel(obj: any): any {
   return obj;
 }
 
+const LoadingSplash = () => (
+  <div className="fixed inset-0 bg-white z-[9999] flex flex-col items-center justify-center p-6 text-center">
+    <div className="relative">
+      <motion.div 
+        animate={{ 
+          scale: [1, 1.1, 1],
+          opacity: [1, 0.8, 1]
+        }}
+        transition={{
+          duration: 2,
+          repeat: Infinity,
+          ease: "easeInOut"
+        }}
+        className="w-24 h-24 bg-primary rounded-[2rem] flex items-center justify-center shadow-2xl shadow-primary/20"
+      >
+        <Smartphone className="text-white w-12 h-12" />
+      </motion.div>
+      <motion.div 
+        animate={{ 
+          scale: [1, 1.5, 1],
+          opacity: [0.5, 0, 0.5]
+        }}
+        transition={{
+          duration: 2,
+          repeat: Infinity,
+          ease: "easeInOut"
+        }}
+        className="absolute inset-0 bg-primary rounded-[2rem] -z-10"
+      />
+    </div>
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.3 }}
+      className="mt-8"
+    >
+      <h1 className="text-2xl font-black text-slate-900 mb-2">Mundo Celular Zelin</h1>
+      <div className="flex items-center justify-center gap-2 text-slate-400">
+        <span className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+        <span className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+        <span className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+        <span className="ml-2 font-bold uppercase tracking-widest text-[10px]">Cargando experiencia...</span>
+      </div>
+    </motion.div>
+  </div>
+);
+
 function camelToSnake(obj: any): any {
   if (Array.isArray(obj)) {
     return obj.map(v => camelToSnake(v));
@@ -447,7 +494,7 @@ export default function App() {
         console.error("Session check failed", e);
       }
     };
-    checkSession();
+
 
     // Fetch branches always for landing page
     const fetchBranches = async () => {
@@ -462,7 +509,7 @@ export default function App() {
         if (MOCK_DATA.branches.length > 0) setSelectedBranchId(MOCK_DATA.branches[0].id);
       }
     };
-    fetchBranches();
+
 
     // Fetch inventory for landing page
     const fetchInventory = async () => {
@@ -475,7 +522,7 @@ export default function App() {
         setInventory(MOCK_DATA.inventory);
       }
     };
-    fetchInventory();
+
 
     const handleResize = () => {
       const mobile = window.innerWidth < 1024;
@@ -484,6 +531,20 @@ export default function App() {
       else setIsSidebarOpen(true);
     };
 
+    const initialize = async () => {
+      setLoading(true);
+      try {
+        await Promise.all([
+          checkSession(),
+          fetchBranches(),
+          fetchInventory()
+        ]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    initialize();
     handleResize();
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
@@ -1077,6 +1138,8 @@ export default function App() {
     }
   };
 
+  if (loading) return <LoadingSplash />;
+
   if (isLandingView || (!user && !showAuth)) {
     return (
       <div className="relative min-h-screen">
@@ -1099,6 +1162,7 @@ export default function App() {
           selectedProduct={selectedProduct}
           setSelectedProduct={setSelectedProduct}
           buyNow={buyNow}
+          settings={settings}
         />
         {/* Botn Flotante de WhatsApp */}
         {settings?.phone && (
@@ -5303,7 +5367,8 @@ function LandingPage({
   sendToWhatsApp,
   selectedProduct,
   setSelectedProduct,
-  buyNow
+  buyNow,
+  settings
 }: any) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
@@ -5349,12 +5414,15 @@ function LandingPage({
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  const waNumber = settings?.phone?.replace(/[^0-9]/g, '') || "51916857022";
+  const waMessage = encodeURIComponent(settings?.whatsappMessage || 'Hola Mundo Celular Zelin, me interesa un producto');
+
   return (
     <div className="min-h-screen bg-white">
 
       {/* Botón Flotante WhatsApp */}
       <a
-        href="https://wa.me/51987654321?text=Hola%20Mundo%20Celular%20Zelin%2C%20me%20interesa%20un%20producto"
+        href={`https://wa.me/${waNumber}?text=${waMessage}`}
         target="_blank"
         rel="noopener noreferrer"
         className="fixed bottom-6 right-5 z-[200] flex items-center gap-3 bg-[#25D366] text-white pl-4 pr-5 py-3 rounded-full shadow-2xl hover:bg-[#20ba59] hover:scale-105 transition-all duration-300 group"
