@@ -5498,7 +5498,7 @@ function LandingPage({
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="fixed inset-4 md:inset-auto md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:w-full md:max-w-4xl bg-white z-[90] rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col md:flex-row"
+              className="fixed inset-4 md:inset-auto md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:w-full md:max-w-4xl max-h-[90vh] bg-white z-[90] rounded-[2.5rem] shadow-2xl flex flex-col md:flex-row overflow-y-auto md:overflow-hidden"
             >
               <button 
                 onClick={() => setSelectedProduct(null)}
@@ -5507,20 +5507,20 @@ function LandingPage({
                 <X className="w-6 h-6" />
               </button>
 
-              <div className="w-full md:w-1/2 bg-slate-50 p-12 flex items-center justify-center relative">
+              <div className="w-full md:w-1/2 bg-slate-50 p-6 md:p-12 flex items-center justify-center relative shrink-0">
                 <img 
-                  src={selectedProduct.image || "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80"} 
+                  src={getPublicUrl(selectedProduct.image) || "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80"} 
                   alt={selectedProduct.name}
-                  className="w-full h-full object-contain drop-shadow-2xl"
+                  className="w-full h-auto max-h-[300px] md:max-h-full object-contain drop-shadow-2xl"
                 />
-                <div className="absolute bottom-8 left-8">
-                  <span className="px-4 py-2 bg-white rounded-2xl text-xs font-bold uppercase tracking-widest shadow-sm border border-slate-100">
+                <div className="absolute bottom-4 left-4">
+                  <span className="px-3 py-1 bg-white rounded-xl text-[10px] font-bold uppercase tracking-widest shadow-sm border border-slate-100">
                     {selectedProduct.brand}
                   </span>
                 </div>
               </div>
 
-              <div className="w-full md:w-1/2 p-8 md:p-12 overflow-y-auto flex flex-col">
+              <div className="w-full md:w-1/2 p-8 md:p-12 md:overflow-y-auto flex flex-col">
                 <div className="flex-1">
                   <span className="text-primary font-bold text-sm uppercase tracking-widest mb-2 block">
                     {selectedProduct.category}
