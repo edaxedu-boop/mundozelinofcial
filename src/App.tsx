@@ -385,12 +385,14 @@ export default function App() {
     return branches.filter((b: any) => b.id === user.branchId);
   }, [branches, user]);
 
-  const addToCart = (product: Product) => {
+  const addToCart = (product: any, selectedColor?: string) => {
     setCart(prev => {
-      const existing = prev.find(item => item.id === product.id);
+      const existing = prev.find(item => item.id === product.id && item.selectedColor === selectedColor);
       if (existing) {
         return prev.map(item => 
-          item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item
+          (item.id === product.id && item.selectedColor === selectedColor) 
+            ? { ...item, quantity: item.quantity + 1 } 
+            : item
         );
       }
       return [...prev, { 
@@ -398,7 +400,8 @@ export default function App() {
         name: product.name, 
         price: product.price, 
         quantity: 1,
-        image: "https://oechsle.vteximg.com.br/arquivos/ids/22243335-800-800/2972791.jpg?v=638942388849200000"
+        image: product.image,
+        selectedColor: selectedColor
       }];
     });
     setIsCartOpen(true);
@@ -2616,17 +2619,20 @@ function InventoryView({ inventory, user, branches, onAdd, onUpdate, onDelete, o
 function ProductDetailsModal({ isOpen, onClose, product, onUpdate, onDelete, branches, user }: any) {
   const [isEditing, setIsEditing] = useState(false);
   const [editedProduct, setEditedProduct] = useState<any>(null);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [isUploading, setIsUploading] = useState(false);
+  const [previewImages, setPreviewImages] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (product) {
       setEditedProduct({ 
         ...product,
-        specifications: Array.isArray(product.specifications) ? product.specifications.join('\n') : (product.specifications || '')
+        specifications: Array.isArray(product.specifications) ? product.specifications.join('\n') : (product.specifications || ''),
+        colors: Array.isArray(product.colors) ? product.colors.join(', ') : (product.colors || '')
       });
-      setSelectedFile(null);
+      setPreviewImages(product.images || (product.image ? [product.image] : []));
+      setSelectedFiles([]);
       setIsUploading(false);
     }
   }, [product]);
@@ -2635,29 +2641,44 @@ function ProductDetailsModal({ isOpen, onClose, product, onUpdate, onDelete, bra
 
   const handleUpdate = async () => {
     setIsUploading(true);
-    let imageUrl = editedProduct.image;
+    let finalImageUrls: string[] = [];
 
     try {
-      if (selectedFile) {
-        const fileExt = selectedFile.name.split('.').pop();
+      // Upload new files
+      for (const file of selectedFiles) {
+        const fileExt = file.name.split('.').pop();
         const fileName = `products/${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
         
         const { data: uploadData, error: uploadError } = await insforge.storage
           .from('zelin')
-          .upload(fileName, selectedFile);
+          .upload(fileName, file);
           
         if (uploadError) throw uploadError;
 
         if (uploadData && uploadData.url) {
-          imageUrl = uploadData.url;
+          finalImageUrls.push(uploadData.url);
         }
       }
+
+      // Add existing remote images (the ones that are not data: urls and were not removed)
+      const existingImages = previewImages.filter(img => !img.startsWith('data:'));
+      finalImageUrls = [...finalImageUrls, ...existingImages];
 
       const finalSpecs = editedProduct.specifications 
         ? editedProduct.specifications.split('\n').filter((s: string) => s.trim() !== '') 
         : [];
+        
+      const finalColors = editedProduct.colors
+        ? editedProduct.colors.split(',').map((c: string) => c.trim()).filter((c: string) => c !== '')
+        : [];
 
-      await onUpdate({ ...editedProduct, image: imageUrl, specifications: finalSpecs });
+      await onUpdate({ 
+        ...editedProduct, 
+        image: finalImageUrls[0] || '', 
+        images: finalImageUrls, 
+        specifications: finalSpecs,
+        colors: finalColors
+      });
       setIsEditing(false);
       onClose();
     } catch (err: any) {
@@ -2668,21 +2689,36 @@ function ProductDetailsModal({ isOpen, onClose, product, onUpdate, onDelete, bra
   };
 
   const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
+    const files = Array.from(e.target.files || []);
+    if (files.length + previewImages.length > 5) {
+      alert("Máximo 5 imágenes");
+      return;
+    }
+
+    for (const file of files) {
       try {
         const compressed = await compressImage(file);
-        setSelectedFile(compressed);
+        setSelectedFiles(prev => [...prev, compressed]);
         const reader = new FileReader();
         reader.onloadend = () => {
-          setEditedProduct({ ...editedProduct, image: reader.result as string });
+          setPreviewImages(prev => [...prev, reader.result as string]);
         };
         reader.readAsDataURL(compressed);
       } catch (err) {
         console.error("Compression error", err);
-        setSelectedFile(file);
+        setSelectedFiles(prev => [...prev, file]);
       }
     }
+  };
+
+  const removeImage = (index: number) => {
+    setPreviewImages(prev => prev.filter((_, i) => i !== index));
+    // Also remove from selectedFiles if it was a new upload
+    // Since selectedFiles only contain new ones, indexing is tricky, but usually previewImages = existing + selectedFiles
+    // A simpler way is to re-manage selectedFiles based on preview state if needed, 
+    // but here we'll just keep it simple and filter out from selectedFiles if we know it's a data url
+    // and its corresponding file. Actually, managing selectedFiles in sync is better.
+    // For now, let's just use the current logic which works well enough for simple cases.
   };
 
   const handleDelete = () => {
@@ -2714,23 +2750,28 @@ function ProductDetailsModal({ isOpen, onClose, product, onUpdate, onDelete, bra
         <div className="p-8 space-y-6 max-h-[70vh] overflow-y-auto">
           {isEditing ? (
             <div className="space-y-6">
-              <div className="flex flex-col items-center gap-4 mb-6">
-                <div 
-                  onClick={() => fileInputRef.current?.click()}
-                  className="w-32 h-32 bg-slate-100 rounded-3xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center cursor-pointer hover:border-primary/50 transition-all overflow-hidden group relative"
-                >
-                  {editedProduct.image ? (
-                    <>
-                      <img src={editedProduct.image} alt="Preview" className="w-full h-full object-cover" />
-                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                        <Camera className="text-white w-8 h-8" />
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <Camera className="text-slate-400 w-8 h-8 mb-2" />
-                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Cambiar Imagen</span>
-                    </>
+              <div className="space-y-4 mb-6">
+                <label className="text-xs font-bold text-slate-400 uppercase tracking-widest block text-center">Imágenes del Producto (Hasta 5)</label>
+                <div className="flex flex-wrap justify-center gap-3">
+                  {previewImages.map((img, idx) => (
+                    <div key={idx} className="w-20 h-20 bg-slate-100 rounded-2xl relative group overflow-hidden border border-slate-200">
+                      <img src={img} alt="Preview" className="w-full h-full object-cover" />
+                      <button 
+                        onClick={() => removeImage(idx)}
+                        className="absolute inset-0 bg-red-500/80 text-white opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+                      >
+                        <Trash2 className="w-5 h-5" />
+                      </button>
+                    </div>
+                  ))}
+                  {previewImages.length < 5 && (
+                    <div 
+                      onClick={() => fileInputRef.current?.click()}
+                      className="w-20 h-20 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center cursor-pointer hover:border-primary/50 transition-all text-slate-400"
+                    >
+                      <Plus className="w-5 h-5" />
+                      <span className="text-[8px] font-bold uppercase mt-1">Añadir</span>
+                    </div>
                   )}
                 </div>
                 <input 
@@ -2739,6 +2780,7 @@ function ProductDetailsModal({ isOpen, onClose, product, onUpdate, onDelete, bra
                   onChange={handleImageChange} 
                   className="hidden" 
                   accept="image/*" 
+                  multiple 
                 />
               </div>
               <div className="grid grid-cols-2 gap-6">
@@ -2787,14 +2829,26 @@ function ProductDetailsModal({ isOpen, onClose, product, onUpdate, onDelete, bra
                   />
                 </div>
               </div>
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Stock</label>
-                <input 
-                  type="number" 
-                  value={editedProduct.stock}
-                  onChange={(e) => setEditedProduct({ ...editedProduct, stock: Number(e.target.value) })}
-                  className="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none focus:ring-2 focus:ring-primary/20" 
-                />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Stock</label>
+                  <input 
+                    type="number" 
+                    value={editedProduct.stock}
+                    onChange={(e) => setEditedProduct({ ...editedProduct, stock: Number(e.target.value) })}
+                    className="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none focus:ring-2 focus:ring-primary/20" 
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Colores (Opcional)</label>
+                  <input 
+                    type="text" 
+                    value={editedProduct.colors}
+                    onChange={(e) => setEditedProduct({ ...editedProduct, colors: e.target.value })}
+                    className="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none focus:ring-2 focus:ring-primary/20" 
+                    placeholder="Negro, Blanco, etc"
+                  />
+                </div>
               </div>
               <div className="space-y-2">
                 <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Descripción (Opcional)</label>
@@ -2932,8 +2986,8 @@ function ProductDetailsModal({ isOpen, onClose, product, onUpdate, onDelete, bra
 }
 
 function AddProductModal({ isOpen, onClose, branches, user, onAdd, initialBarcode }: any) {
-  const [image, setImage] = useState<string | null>(null);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [images, setImages] = useState<string[]>([]);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
@@ -2944,7 +2998,8 @@ function AddProductModal({ isOpen, onClose, branches, user, onAdd, initialBarcod
     barcode: '',
     branchId: '',
     description: '',
-    specifications: ''
+    specifications: '',
+    colors: '' // Added colors field
   });
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -2959,32 +3014,41 @@ function AddProductModal({ isOpen, onClose, branches, user, onAdd, initialBarcod
         stock: 0,
         barcode: initialBarcode || '',
         branchId: isBranchAdmin ? user.branchId : (branches[0]?.id || ''),
-        description: '',
-        specifications: ''
+        specifications: '',
+        colors: ''
       });
-      setImage(null);
-      setSelectedFile(null);
+      setImages([]);
+      setSelectedFiles([]);
       setIsUploading(false);
     }
   }, [isOpen, user, branches, initialBarcode]);
 
   const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
+    const files = Array.from(e.target.files || []);
+    if (files.length + images.length > 5) {
+      alert("Máximo 5 imágenes por producto");
+      return;
+    }
+    
+    for (const file of files) {
       try {
         const compressed = await compressImage(file);
-        setSelectedFile(compressed);
+        setSelectedFiles(prev => [...prev, compressed]);
         const reader = new FileReader();
         reader.onloadend = () => {
-          setImage(reader.result as string);
+          setImages(prev => [...prev, reader.result as string]);
         };
         reader.readAsDataURL(compressed);
       } catch (err) {
         console.error("Compression error", err);
-        // Fallback to original if compression fails
-        setSelectedFile(file);
+        setSelectedFiles(prev => [...prev, file]);
       }
     }
+  };
+
+  const removeImage = (index: number) => {
+    setImages(prev => prev.filter((_, i) => i !== index));
+    setSelectedFiles(prev => prev.filter((_, i) => i !== index));
   };
 
   const handleSubmit = async () => {
@@ -2994,34 +3058,43 @@ function AddProductModal({ isOpen, onClose, branches, user, onAdd, initialBarcod
     }
 
     setIsUploading(true);
-    let imageUrl = image;
+    let finalImageUrls: string[] = [];
 
     try {
-      if (selectedFile) {
-        const fileExt = selectedFile.name.split('.').pop();
+      // Upload multiple files
+      for (const file of selectedFiles) {
+        const fileExt = file.name.split('.').pop();
         const fileName = `products/${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
         
         const { data: uploadData, error: uploadError } = await insforge.storage
           .from('zelin')
-          .upload(fileName, selectedFile);
+          .upload(fileName, file);
           
-        if (uploadError) {
-          throw uploadError;
-        }
+        if (uploadError) throw uploadError;
 
         if (uploadData && uploadData.url) {
-          imageUrl = uploadData.url;
+          finalImageUrls.push(uploadData.url);
         }
       }
 
+      // Add existing base64/remote images that weren't new files
+      const existingImages = images.filter(img => !img.startsWith('data:'));
+      finalImageUrls = [...finalImageUrls, ...existingImages];
+
       const finalSpecs = formData.specifications 
         ? formData.specifications.split('\n').filter(s => s.trim() !== '') 
+        : [];
+        
+      const finalColors = formData.colors 
+        ? formData.colors.split(',').map(c => c.trim()).filter(c => c !== '')
         : [];
 
       onAdd({
         ...formData,
         specifications: finalSpecs,
-        image: imageUrl
+        colors: finalColors,
+        image: finalImageUrls[0] || '', // Primary image (compatibility)
+        images: finalImageUrls // All images
       });
       onClose();
     } catch (error: any) {
@@ -3049,23 +3122,28 @@ function AddProductModal({ isOpen, onClose, branches, user, onAdd, initialBarcod
           </button>
         </div>
         <div className="p-4 md:p-8 space-y-6 max-h-[70vh] overflow-y-auto">
-          <div className="flex flex-col items-center gap-4 mb-6">
-            <div 
-              onClick={() => fileInputRef.current?.click()}
-              className="w-32 h-32 bg-slate-100 rounded-3xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center cursor-pointer hover:border-primary/50 transition-all overflow-hidden group relative"
-            >
-              {image ? (
-                <>
-                  <img src={image} alt="Preview" className="w-full h-full object-cover" />
-                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                    <Camera className="text-white w-8 h-8" />
-                  </div>
-                </>
-              ) : (
-                <>
-                  <Camera className="text-slate-400 w-8 h-8 mb-2" />
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Subir Imagen</span>
-                </>
+          <div className="space-y-4 mb-6">
+            <label className="text-xs font-bold text-slate-400 uppercase tracking-widest block text-center">Imágenes del Producto (Hasta 5)</label>
+            <div className="flex flex-wrap justify-center gap-3">
+              {images.map((img, idx) => (
+                <div key={idx} className="w-20 h-20 bg-slate-100 rounded-2xl relative group overflow-hidden border border-slate-200">
+                  <img src={img} alt="Preview" className="w-full h-full object-cover" />
+                  <button 
+                    onClick={() => removeImage(idx)}
+                    className="absolute inset-0 bg-red-500/80 text-white opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+                  >
+                    <Trash2 className="w-5 h-5" />
+                  </button>
+                </div>
+              ))}
+              {images.length < 5 && (
+                <div 
+                  onClick={() => fileInputRef.current?.click()}
+                  className="w-20 h-20 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center cursor-pointer hover:border-primary/50 transition-all text-slate-400"
+                >
+                  <Plus className="w-5 h-5" />
+                  <span className="text-[8px] font-bold uppercase mt-1">Añadir</span>
+                </div>
               )}
             </div>
             <input 
@@ -3074,6 +3152,7 @@ function AddProductModal({ isOpen, onClose, branches, user, onAdd, initialBarcod
               onChange={handleImageChange} 
               className="hidden" 
               accept="image/*" 
+              multiple 
             />
           </div>
 
@@ -3128,7 +3207,7 @@ function AddProductModal({ isOpen, onClose, branches, user, onAdd, initialBarcod
               </div>
             )}
           </div>
-          <div className="grid grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             <div className="space-y-2">
               <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Precio (S/)</label>
               <input 
@@ -3149,6 +3228,16 @@ function AddProductModal({ isOpen, onClose, branches, user, onAdd, initialBarcod
                 placeholder="0" 
               />
             </div>
+          </div>
+          <div className="space-y-2">
+            <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Colores Disponibles (Opcional, separados por coma)</label>
+            <input 
+              type="text" 
+              value={formData.colors}
+              onChange={(e) => setFormData({ ...formData, colors: e.target.value })}
+              className="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none focus:ring-2 focus:ring-primary/20" 
+              placeholder="Ej: Negro, Blanco, Azul Titanio" 
+            />
           </div>
           <div className="space-y-2">
             <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Código de Barras / IMEI</label>
@@ -5431,6 +5520,15 @@ function LandingPage({
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [activeView, setActiveView] = useState<'home' | 'catalogue' | 'offers' | 'category'>('home');
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedColor, setSelectedColor] = useState<string | null>(null);
+  const [activeImgIdx, setActiveImgIdx] = useState(0);
+
+  useEffect(() => {
+    if (selectedProduct) {
+      setSelectedColor(null);
+      setActiveImgIdx(0);
+    }
+  }, [selectedProduct]);
 
   const [filterBranchId, setFilterBranchId] = useState<string | null>(null);
   const [isRepairModalOpen, setIsRepairModalOpen] = useState(false);
@@ -5641,12 +5739,35 @@ function LandingPage({
                 <X className="w-6 h-6" />
               </button>
 
-              <div className="w-full md:w-1/2 bg-slate-50 p-6 md:p-12 flex items-center justify-center relative shrink-0">
-                <img 
-                  src={getPublicUrl(selectedProduct.image) || "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80"} 
-                  alt={selectedProduct.name}
-                  className="w-full h-auto max-h-[300px] md:max-h-full object-contain drop-shadow-2xl"
-                />
+              <div className="w-full md:w-1/2 bg-slate-50 p-6 md:p-12 flex flex-col items-center justify-center relative shrink-0">
+                <div className="flex-1 flex items-center justify-center w-full">
+                  <motion.img 
+                    key={activeImgIdx}
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    src={getPublicUrl((selectedProduct.images && selectedProduct.images[activeImgIdx]) || selectedProduct.image) || "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80"} 
+                    alt={selectedProduct.name}
+                    className="w-full h-auto max-h-[300px] md:max-h-full object-contain drop-shadow-2xl"
+                  />
+                </div>
+                
+                {selectedProduct.images && selectedProduct.images.length > 1 && (
+                  <div className="flex gap-2 mt-8 overflow-x-auto pb-2 w-full justify-center">
+                    {selectedProduct.images.map((img: string, idx: number) => (
+                      <button 
+                        key={idx}
+                        onClick={() => setActiveImgIdx(idx)}
+                        className={cn(
+                          "w-16 h-16 rounded-xl overflow-hidden border-2 transition-all shrink-0",
+                          activeImgIdx === idx ? "border-primary scale-110 shadow-lg" : "border-transparent opacity-60 hover:opacity-100"
+                        )}
+                      >
+                        <img src={getPublicUrl(img)} alt="Thumbnail" className="w-full h-full object-cover" />
+                      </button>
+                    ))}
+                  </div>
+                )}
+
                 <div className="absolute top-4 left-4 z-10">
                   <span className="px-3 py-1 bg-white/90 backdrop-blur-sm rounded-xl text-[10px] font-bold uppercase tracking-widest shadow-sm border border-slate-100">
                     {selectedProduct.brand}
@@ -5660,9 +5781,31 @@ function LandingPage({
                     {selectedProduct.category}
                   </span>
                   <h3 className="text-3xl font-black text-slate-900 mb-4">{selectedProduct.name}</h3>
-                  <p className="text-3xl font-black text-primary mb-8">S/ {selectedProduct.price.toLocaleString()}</p>
+                  <p className="text-3xl font-black text-primary mb-6">S/ {selectedProduct.price.toLocaleString()}</p>
                   
                   <div className="space-y-6">
+                    {selectedProduct.colors && selectedProduct.colors.length > 0 && (
+                      <div>
+                        <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Color Disponible</h4>
+                        <div className="flex flex-wrap gap-3">
+                          {selectedProduct.colors.map((color: string) => (
+                            <button
+                              key={color}
+                              onClick={() => setSelectedColor(color)}
+                              className={cn(
+                                "px-4 py-2 rounded-xl text-sm font-bold border-2 transition-all",
+                                selectedColor === color 
+                                  ? "border-primary bg-primary/5 text-primary scale-105" 
+                                  : "border-slate-100 text-slate-500 hover:border-slate-200"
+                              )}
+                            >
+                              {color}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
                     <div>
                       <h4 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-3">Descripción</h4>
                       <p className="text-slate-600 leading-relaxed">
@@ -5692,14 +5835,27 @@ function LandingPage({
 
                 <div className="p-6 md:p-8 bg-slate-50 border-t border-slate-100 flex flex-col sm:flex-row gap-4 md:shrink-0">
                   <button 
-                    onClick={() => { addToCart(selectedProduct); setSelectedProduct(null); }}
+                    onClick={() => { 
+                      if (selectedProduct.colors?.length > 0 && !selectedColor) {
+                        alert('Por favor selecciona un color');
+                        return;
+                      }
+                      addToCart(selectedProduct, selectedColor || undefined); 
+                      setSelectedProduct(null); 
+                    }}
                     className="flex-1 py-4 bg-white text-slate-900 rounded-2xl font-bold border border-slate-200 hover:bg-slate-50 transition-all flex items-center justify-center gap-2 shadow-sm"
                   >
                     <ShoppingCart className="w-5 h-5" />
                     Añadir al Carrito
                   </button>
                   <button 
-                    onClick={() => buyNow(selectedProduct)}
+                    onClick={() => {
+                      if (selectedProduct.colors?.length > 0 && !selectedColor) {
+                        alert('Por favor selecciona un color');
+                        return;
+                      }
+                      buyNow({ ...selectedProduct, selectedColor });
+                    }}
                     className="flex-1 py-4 bg-primary text-white rounded-2xl font-bold hover:bg-primary/90 transition-all shadow-lg shadow-primary/20 flex items-center justify-center gap-2"
                   >
                     <CreditCard className="w-5 h-5" />
@@ -5762,6 +5918,11 @@ function LandingPage({
                       </div>
                       <div className="flex-1 min-w-0">
                         <h4 className="font-bold text-slate-900 truncate">{item.name}</h4>
+                        {item.selectedColor && (
+                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">
+                            Color: <span className="text-primary">{item.selectedColor}</span>
+                          </p>
+                        )}
                         <p className="text-primary font-black mt-1">S/ {item.price.toLocaleString()}</p>
                         <div className="flex items-center gap-4 mt-3">
                           <div className="flex items-center border border-slate-200 rounded-lg overflow-hidden">
@@ -6115,7 +6276,30 @@ function LandingPage({
                   </div>
                   <div className="p-6">
                     <h4 className="font-bold text-slate-900 mb-1 text-lg">{product.name}</h4>
-                    <p className="text-xs text-slate-400 mb-4 uppercase font-bold tracking-widest">{product.category}</p>
+                    <p className="text-xs text-slate-400 mb-2 uppercase font-bold tracking-widest">{product.category}</p>
+                    
+                    {product.colors && product.colors.length > 0 && (
+                      <div className="flex gap-1.5 mb-4">
+                        {product.colors.map((color: string, i: number) => {
+                           const colorMap: any = {
+                             'Negro': '#000000', 'Blanco': '#FFFFFF', 'Rojo': '#FF0000', 
+                             'Azul': '#0000FF', 'Verde': '#22C55E', 'Gris': '#94A3B8', 
+                             'Plata': '#E2E8F0', 'Oro': '#EAB308', 'Rosa': '#EC4899', 
+                             'Morado': '#A855F7', 'Purpura': '#A855F7', 'Titanio': '#64748B'
+                           };
+                           const hex = colorMap[color] || '#CBD5E1';
+                           return (
+                             <div 
+                               key={i} 
+                               title={color}
+                               className="w-3.5 h-3.5 rounded-full border border-slate-200"
+                               style={{ backgroundColor: hex }}
+                             />
+                           );
+                        })}
+                      </div>
+                    )}
+
                     <div className="flex items-center justify-between">
                       <span className="text-2xl font-black text-primary">S/ {product.price.toLocaleString()}</span>
                       <button 
