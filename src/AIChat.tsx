@@ -100,7 +100,7 @@ export function AIChat({ inventory, settings, insforge }: any) {
               initial={{ opacity: 0, scale: 0.9, y: 100 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 100 }}
-              className="fixed bottom-6 right-6 z-[120] w-full max-w-[400px] h-[600px] bg-white rounded-[2.5rem] shadow-2xl flex flex-col overflow-hidden border border-slate-100"
+              className="fixed bottom-4 right-4 left-4 md:left-auto md:right-6 md:bottom-6 z-[120] mx-auto md:mx-0 w-auto max-w-[400px] h-[600px] max-h-[85vh] md:max-h-[600px] bg-white rounded-[2.5rem] shadow-2xl flex flex-col overflow-hidden border border-slate-100"
             >
               <div className="bg-[#84cc16] p-6 text-white flex items-center justify-between">
                 <div className="flex items-center gap-3">
