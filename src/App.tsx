@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { AIChat } from './AIChat';
+
 import { 
   LayoutDashboard, 
   Smartphone, 
@@ -474,7 +476,7 @@ export default function App() {
             .single();
           
           if (profile) {
-            setUser(profile);
+            setUser(snakeToCamel(profile));
           } else {
             // Auto-provision profile for OAuth users
             const name = (authUser.user.metadata?.full_name as string) || (authUser.user.profile as any)?.name || '';
@@ -889,6 +891,37 @@ export default function App() {
     }
   };
 
+  const handleDeleteSale = async (sale: any) => {
+    if (!confirm('¿Estás seguro de eliminar esta venta? El stock de los productos se restaurará.')) return;
+    
+    try {
+      // 1. Restore stock
+      for (const item of sale.items) {
+        const { data: prod } = await insforge.database
+          .from('products')
+          .select('stock')
+          .eq('id', item.id)
+          .single();
+        
+        if (prod) {
+          const newStock = Number(prod.stock) + Number(item.quantity);
+          await insforge.database.from('products').update({ stock: newStock }).eq('id', item.id);
+          setInventory(prev => prev.map(p => p.id === item.id ? { ...p, stock: newStock } : p));
+        }
+      }
+
+      // 2. Delete sale
+      const { error } = await insforge.database.from('sales').delete().eq('id', sale.id);
+      if (error) throw error;
+      
+      setSales(prev => prev.filter(s => s.id !== sale.id));
+      alert('Venta eliminada y stock restaurado.');
+    } catch (err: any) {
+      console.error("Error deleting sale", err);
+      alert('Error al eliminar la venta: ' + err.message);
+    }
+  };
+
   const handleBulkAdd = async (products: any[]) => {
     try {
       const validProducts = products.filter(p => p.name && p.price !== undefined);
@@ -1019,7 +1052,7 @@ export default function App() {
     try {
       const { data, error } = await insforge.database.from('users').insert([userData]);
       if (error) throw error;
-      if (data) setUsers(prev => [...prev, data[0]]);
+      if (data) setUsers(prev => [...prev, snakeToCamel(data[0])]);
     } catch (err) {
       console.error("Error adding user", err);
     }
@@ -1497,8 +1530,15 @@ export default function App() {
 
           <div className="flex items-center gap-4">
             <div className="text-right hidden sm:block">
-              <p className="text-sm font-bold text-slate-900">{user.name}</p>
-              <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">{user.role.replace('_', ' ')}</p>
+              <p className="text-sm font-black text-slate-900 leading-tight">{user.name}</p>
+              <div className="flex flex-col items-end">
+                <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider leading-none">{user.role.replace('_', ' ')}</span>
+                {user.branchId && (
+                  <span className="text-[9px] text-primary font-black uppercase tracking-tight mt-0.5">
+                    {branches.find((b: any) => b.id === user.branchId)?.name}
+                  </span>
+                )}
+              </div>
             </div>
             <div className="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center border border-slate-200 shrink-0">
               <Users className="w-5 h-5 text-slate-600" />
@@ -1518,7 +1558,7 @@ export default function App() {
             >
               {activeTab === 'dashboard' && <DashboardView user={user} inventory={filteredInventory} sales={filteredSales} services={filteredServices} branches={filteredBranches} />}
               {activeTab === 'customers' && <CustomersView customers={filteredCustomers} sales={filteredSales} />}
-              {activeTab === 'sales' && <SalesView sales={filteredSales} inventory={filteredInventory} user={user} onAddSale={handleAddSale} />}
+              {activeTab === 'sales' && <SalesView sales={filteredSales} inventory={filteredInventory} user={user} branches={branches} settings={settings} onAddSale={handleAddSale} onDeleteSale={handleDeleteSale} />}
               {activeTab === 'credits' && <CreditsView credits={filteredCredits} />}
               {activeTab === 'technical' && <TechnicalServiceView services={filteredServices} user={user} />}
               {activeTab === 'my_purchases' && <MyPurchasesView sales={filteredSales} credits={filteredCredits} />}
@@ -3188,6 +3228,7 @@ function AddProductModal({ isOpen, onClose, branches, user, onAdd, initialBarcod
               >
                 <option>Celulares</option>
                 <option>Accesorios</option>
+                <option>Skins & Keys</option>
                 <option>Tablets</option>
                 <option>Servicio Técnico</option>
                 <option>Parlantes</option>
@@ -3502,9 +3543,14 @@ function ScannerModal({ isOpen, onClose, onScan }: any) {
       // Use Html5QrcodeScanner from global or import if available
       // Assuming it's available via script tag or similar in the project
       try {
-        const scanner = new (window as any).Html5QrcodeScanner(
+        const scanner = new Html5QrcodeScanner(
           "reader",
-          { fps: 10, qrbox: { width: 250, height: 250 } },
+          { 
+            fps: 10, 
+            qrbox: { width: 250, height: 250 },
+            rememberLastUsedCamera: true,
+            supportedScanTypes: [0] // Priorizar cámara
+          },
           /* verbose= */ false
         );
         scannerRef.current = scanner;
@@ -4723,6 +4769,7 @@ function NewSaleModal({ isOpen, onClose, inventory, onAdd, user }: any) {
   const [paymentType, setPaymentType] = useState<'CONTADO' | 'CREDITO'>('CONTADO');
   const [selectedProducts, setSelectedProducts] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const filteredInventory = inventory.filter((p: any) => 
     p.stock > 0 && (p.name.toLowerCase().includes(searchTerm.toLowerCase()) || p.brand.toLowerCase().includes(searchTerm.toLowerCase()))
@@ -4762,32 +4809,41 @@ function NewSaleModal({ isOpen, onClose, inventory, onAdd, user }: any) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
     if (selectedProducts.length === 0) return alert('Selecciona al menos un producto');
     if (!customerName) return alert('Ingresa el nombre del cliente');
 
-    const newSale = {
-      id: crypto.randomUUID(),
-      date: new Date().toISOString(),
-      items: selectedProducts.map(p => ({
-        id: p.id,
-        name: p.name,
-        price: p.price,
-        quantity: p.quantity
-      })),
-      total,
-      type: paymentType,
-      customerName,
-      customerPhone,
-      sellerId: user.id,
-      branchId: user.branchId || 'main'
-    };
+    setIsSubmitting(true);
+    try {
+      const newSale = {
+        id: crypto.randomUUID(),
+        date: new Date().toISOString(),
+        items: selectedProducts.map(p => ({
+          id: p.id,
+          name: p.name,
+          price: p.price,
+          quantity: p.quantity
+        })),
+        total,
+        type: paymentType,
+        customerName,
+        customerPhone,
+        sellerId: user.id,
+        sellerName: user.name,
+        branchId: user.branchId || 'main'
+      };
 
-    await onAdd(newSale);
-    onClose();
-    // Reset form
-    setCustomerName('');
-    setCustomerPhone('');
-    setSelectedProducts([]);
+      await onAdd(newSale);
+      onClose();
+      // Reset form
+      setCustomerName('');
+      setCustomerPhone('');
+      setSelectedProducts([]);
+    } catch (err: any) {
+      alert("Error al procesar la venta: " + err.message);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (!isOpen) return null;
@@ -4937,9 +4993,12 @@ function NewSaleModal({ isOpen, onClose, inventory, onAdd, user }: any) {
 
               <button 
                 type="submit"
-                className="w-full bg-slate-900 text-white py-4 rounded-2xl font-black uppercase tracking-widest hover:bg-primary transition-all shadow-xl shadow-slate-900/10"
+                disabled={isSubmitting}
+                className="w-full bg-slate-900 text-white py-4 rounded-2xl font-black uppercase tracking-widest hover:bg-primary transition-all shadow-xl shadow-slate-900/10 flex items-center justify-center gap-2 disabled:opacity-50"
               >
-                Confirmar Venta
+                {isSubmitting ? (
+                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                ) : 'Confirmar Venta'}
               </button>
             </div>
           </form>
@@ -4949,9 +5008,72 @@ function NewSaleModal({ isOpen, onClose, inventory, onAdd, user }: any) {
   );
 }
 
-function SalesView({ sales, inventory, user, onAddSale }: any) {
+function SalesView({ sales, inventory, user, branches, settings, onAddSale, onDeleteSale }: any) {
   const [activeFilter, setActiveFilter] = useState('all');
   const [showNewSaleModal, setShowNewSaleModal] = useState(false);
+
+  const handlePrintReceipt = (sale: any) => {
+    const doc = new jsPDF({
+      unit: 'mm',
+      format: [80, 200] // Thermal printer format
+    });
+
+    const branch = branches.find((b: any) => b.id === sale.branchId);
+    
+    // Header
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text('MUNDO CELULAR ZELIN', 40, 10, { align: 'center' });
+    doc.setFontSize(8);
+    doc.text(branch?.name || 'Sucursal Central', 40, 15, { align: 'center' });
+    doc.text(branch?.address || settings?.address || '', 40, 19, { align: 'center' });
+    doc.text(`Tel: ${settings?.phone || ''}`, 40, 23, { align: 'center' });
+    
+    doc.line(5, 26, 75, 26);
+    
+    // Sale Info
+    doc.setFontSize(9);
+    doc.text(`NOTA DE VENTA: #${sale.id.slice(-6).toUpperCase()}`, 5, 32);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Fecha: ${new Date(sale.date).toLocaleString()}`, 5, 37);
+    doc.text(`Cliente: ${sale.customerName}`, 5, 42);
+    doc.text(`Vendedor: ${sale.sellerName || 'N/A'}`, 5, 47);
+    
+    doc.line(5, 50, 75, 50);
+    
+    // Items
+    let y = 55;
+    doc.setFont('helvetica', 'bold');
+    doc.text('Producto', 5, y);
+    doc.text('Cant', 45, y);
+    doc.text('Subt', 65, y);
+    
+    y += 5;
+    doc.setFont('helvetica', 'normal');
+    sale.items.forEach((item: any) => {
+      const nameLines = doc.splitTextToSize(item.name, 35);
+      doc.text(nameLines, 5, y);
+      doc.text(item.quantity.toString(), 45, y);
+      doc.text(`S/ ${(item.price * item.quantity).toFixed(2)}`, 65, y);
+      y += (nameLines.length * 4) + 1;
+    });
+    
+    doc.line(5, y, 75, y);
+    y += 5;
+    
+    // Total
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'bold');
+    doc.text('TOTAL:', 45, y);
+    doc.text(`S/ ${sale.total.toFixed(2)}`, 65, y);
+    
+    y += 10;
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'italic');
+    doc.text('¡Gracias por su compra!', 40, y, { align: 'center' });
+    
+    doc.save(`Venta_${sale.id.slice(-6)}.pdf`);
+  };
 
   const filteredSales = sales.filter((sale: any) => {
     if (activeFilter === 'credits') return sale.type === 'CREDITO';
@@ -5032,10 +5154,34 @@ function SalesView({ sales, inventory, user, onAddSale }: any) {
                 </div>
               ))}
             </div>
-            <div className="pt-4 border-t border-slate-100 flex justify-between items-center">
-              <span className="text-sm font-medium text-slate-400">Total</span>
-              <span className="text-xl font-bold text-primary">S/ {sale.total.toLocaleString()}</span>
-            </div>
+              <div className="pt-4 border-t border-slate-100 flex justify-between items-center">
+                <div className="flex flex-col">
+                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Vendedor</span>
+                   <span className="text-xs font-bold text-slate-700">{sale.sellerName || 'N/A'}</span>
+                </div>
+                <div className="flex gap-2">
+                  <button 
+                    onClick={() => handlePrintReceipt(sale)}
+                    className="p-2 bg-slate-100 hover:bg-primary hover:text-white rounded-lg transition-all text-slate-500"
+                    title="Imprimir Nota de Venta"
+                  >
+                    <Download className="w-4 h-4" />
+                  </button>
+                  {['SUPER_ADMIN', 'ADMIN_SUCURSAL'].includes(user.role) && (
+                    <button 
+                      onClick={() => onDeleteSale(sale)}
+                      className="p-2 bg-slate-100 hover:bg-red-500 hover:text-white rounded-lg transition-all text-slate-500"
+                      title="Eliminar Venta"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm font-medium text-slate-400">Total</span>
+                <span className="text-xl font-bold text-primary">S/ {sale.total.toLocaleString()}</span>
+              </div>
           </div>
         ))}
       </div>
@@ -5518,7 +5664,7 @@ function LandingPage({
 }: any) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
-  const [activeView, setActiveView] = useState<'home' | 'catalogue' | 'offers' | 'category'>('home');
+  const [activeView, setActiveView] = useState<'home' | 'catalogue' | 'offers' | 'category' | 'skins_keys'>('home');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedColor, setSelectedColor] = useState<string | null>(null);
   const [activeImgIdx, setActiveImgIdx] = useState(0);
@@ -5538,11 +5684,43 @@ function LandingPage({
     device: '',
     issue: ''
   });
+  const [repairImages, setRepairImages] = useState<string[]>([]);
+  const [repairFiles, setRepairFiles] = useState<File[]>([]);
+  const [isRepairUploading, setIsRepairUploading] = useState(false);
+  const repairFileRef = useRef<HTMLInputElement>(null);
 
   const [searchRepairId, setSearchRepairId] = useState('');
   const [searchResult, setSearchResult] = useState<any>(null);
   const [isSearchingRepair, setIsSearchingRepair] = useState(false);
   const [hasSearchedRepair, setHasSearchedRepair] = useState(false);
+
+  const handleRepairImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length + repairImages.length > 2) {
+      alert("Máximo 2 imágenes");
+      return;
+    }
+
+    for (const file of files) {
+      try {
+        const compressed = await compressImage(file);
+        setRepairFiles(prev => [...prev, compressed]);
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setRepairImages(prev => [...prev, reader.result as string]);
+        };
+        reader.readAsDataURL(compressed);
+      } catch (err) {
+        console.error("Compression error", err);
+        setRepairFiles(prev => [...prev, file]);
+      }
+    }
+  };
+
+  const removeRepairImage = (index: number) => {
+    setRepairImages(prev => prev.filter((_, i) => i !== index));
+    setRepairFiles(prev => prev.filter((_, i) => i !== index));
+  };
 
   const handleCheckRepair = async () => {
     if (!searchRepairId) return;
@@ -5562,19 +5740,43 @@ function LandingPage({
     }
   };
 
-  const handleRepairSubmit = (e: React.FormEvent) => {
+  const handleRepairSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const phoneNumber = settings?.phone?.replace(/[^0-9]/g, '') || "51916857022";
-    const message = `*Solicitud de Reparación*\n\n` +
-      `*Nombre:* ${repairForm.name}\n` +
-      `*Celular:* ${repairForm.phone}\n` +
-      `*Equipo:* ${repairForm.device}\n` +
-      `*Falla:* ${repairForm.issue}\n\n` +
-      `Hola, me gustaría solicitar un presupuesto para reparar mi equipo.`;
-    
-    window.open(`https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`, '_blank');
-    setIsRepairModalOpen(false);
-    setRepairForm({ name: '', phone: '', device: '', issue: '' });
+    setIsRepairUploading(true);
+
+    try {
+      const imageUrls: string[] = [];
+      for (const file of repairFiles) {
+        const fileExt = file.name.split('.').pop();
+        const fileName = `repairs/${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+        const { data, error } = await insforge.storage.from('zelin').upload(fileName, file);
+        if (error) throw error;
+        if (data?.url) imageUrls.push(data.url);
+      }
+
+      const phoneNumber = settings?.phone?.replace(/[^0-9]/g, '') || "51916857022";
+      let message = `*Solicitud de Reparación*\n\n` +
+        `*Nombre:* ${repairForm.name}\n` +
+        `*Celular:* ${repairForm.phone}\n` +
+        `*Equipo:* ${repairForm.device}\n` +
+        `*Falla:* ${repairForm.issue}\n`;
+      
+      if (imageUrls.length > 0) {
+        message += `\n*Fotos del Equipo:*\n${imageUrls.join('\n')}\n`;
+      }
+
+      message += `\nHola, me gustaría solicitar un presupuesto para reparar mi equipo.`;
+      
+      window.open(`https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`, '_blank');
+      setIsRepairModalOpen(false);
+      setRepairForm({ name: '', phone: '', device: '', issue: '' });
+      setRepairImages([]);
+      setRepairFiles([]);
+    } catch (err: any) {
+      alert("Error al procesar la solicitud: " + err.message);
+    } finally {
+      setIsRepairUploading(false);
+    }
   };
 
   const filteredProducts = inventory.filter((p: any) => {
@@ -5590,6 +5792,7 @@ function LandingPage({
     if (activeView === 'catalogue') return matchesBranch;
     if (activeView === 'offers') return matchesBranch && (p.category === 'Ofertas' || p.price < 500);
     if (activeView === 'category') return matchesBranch && p.category === activeCategory;
+    if (activeView === 'skins_keys') return matchesBranch && (p.category === 'Skins' || p.category === 'Keys' || p.category === 'Skins & Keys');
     return true;
   });
 
@@ -5597,7 +5800,17 @@ function LandingPage({
     ? 'Catálogo Completo' 
     : activeView === 'offers' 
       ? 'Ofertas Especiales' 
-      : activeCategory;
+      : activeView === 'skins_keys'
+        ? 'Skins & Keys Premium'
+        : activeCategory;
+
+  const displayDescription = activeView === 'catalogue' 
+    ? 'Explora todos nuestros productos disponibles en preventa y entrega inmediata.'
+    : activeView === 'offers'
+      ? 'Los mejores precios del mercado en equipos seleccionados. Actualizado semanalmente.'
+      : activeView === 'skins_keys'
+        ? 'Personaliza tus equipos con los mejores skins y llaves digitales del mercado.'
+        : `Mostrando la mejor selección de ${activeCategory?.toLowerCase()} disponibles.`;
 
   const cartTotal = cart.reduce((acc: number, item: any) => acc + (item.price * item.quantity), 0);
   const cartCount = cart.reduce((acc: number, item: any) => acc + item.quantity, 0);
@@ -5609,7 +5822,7 @@ function LandingPage({
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleSetView = (view: 'home' | 'catalogue' | 'offers') => {
+  const handleSetView = (view: 'home' | 'catalogue' | 'offers' | 'skins_keys') => {
     setActiveView(view);
     setActiveCategory(null);
     setFilterBranchId(null);
@@ -5629,22 +5842,7 @@ function LandingPage({
   return (
     <div className="min-h-screen bg-white">
 
-      {/* Botón Flotante WhatsApp */}
-      <a
-        href={`https://wa.me/${waNumber}?text=${waMessage}`}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="fixed bottom-6 right-5 z-[200] flex items-center gap-3 bg-[#25D366] text-white pl-4 pr-5 py-3 rounded-full shadow-2xl hover:bg-[#20ba59] hover:scale-105 transition-all duration-300 group"
-        style={{ boxShadow: '0 8px 32px rgba(37,211,102,0.45)' }}
-      >
-        <span className="flex items-center justify-center w-8 h-8 shrink-0">
-          <svg viewBox="0 0 24 24" fill="currentColor" className="w-7 h-7">
-            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.569-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
-            <path d="M12 0C5.373 0 0 5.373 0 12c0 2.117.554 4.103 1.523 5.827L.057 23.862a.5.5 0 00.613.613l6.116-1.455A11.937 11.937 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.97 0-3.81-.538-5.39-1.472l-.385-.228-3.993.951.968-3.9-.249-.4A9.956 9.956 0 012 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/>
-          </svg>
-        </span>
-        <span className="font-bold text-sm whitespace-nowrap hidden sm:block">¡Escríbenos!</span>
-      </a>
+      <AIChat inventory={inventory} settings={settings} insforge={insforge} />
 
       {/* Navbar */}
       <nav className="h-20 border-b border-slate-100 px-4 md:px-8 flex items-center justify-between sticky top-0 bg-white/80 backdrop-blur-md z-50">
@@ -5664,8 +5862,9 @@ function LandingPage({
             if (activeView === 'home') el?.scrollIntoView({ behavior: 'smooth' });
             else handleSetView('home');
           }} className="hover:text-primary transition-colors">Categorías</button>
-          <button onClick={() => handleSetView('catalogue')} className={cn("hover:text-primary transition-colors", activeView === 'catalogue' && "text-primary")}>Catálogo</button>
-          <button onClick={() => handleSetView('offers')} className={cn("hover:text-primary transition-colors", activeView === 'offers' && "text-primary")}>Ofertas</button>
+          <button onClick={() => handleSetView('catalogue')} className="hover:text-primary transition-colors">Catálogo</button>
+          <button onClick={() => handleSetView('skins_keys')} className={cn("hover:text-primary transition-colors", activeView === 'skins_keys' && "text-primary")}>Skins & Keys</button>
+          <button onClick={() => handleSetView('offers')} className="hover:text-primary transition-colors">Ofertas</button>
           <a href="#servicios" className="hover:text-primary transition-colors">Reparación</a>
         </div>
 
@@ -5991,6 +6190,7 @@ function LandingPage({
                 className="text-left hover:text-primary transition-colors"
               >Categorías</button>
               <button onClick={() => { setIsMobileMenuOpen(false); handleSetView('catalogue'); }} className="text-left hover:text-primary transition-colors">Catálogo</button>
+              <button onClick={() => { setIsMobileMenuOpen(false); handleSetView('skins_keys'); }} className="text-left hover:text-primary transition-colors">Skins & Keys</button>
               <button onClick={() => { setIsMobileMenuOpen(false); handleSetView('offers'); }} className="text-left hover:text-primary transition-colors">Ofertas</button>
               <a href="#servicios" onClick={() => setIsMobileMenuOpen(false)} className="hover:text-primary transition-colors">Reparación</a>
             </div>
@@ -6079,6 +6279,7 @@ function LandingPage({
           {[
             { name: 'Celulares', icon: Smartphone },
             { name: 'Accesorios', icon: ShoppingCart },
+            { name: 'Skins & Keys', icon: Sparkles },
             { name: 'Parlantes', icon: Volume2 },
             { name: 'Servicio Técnico', icon: Wrench },
             { name: 'Electrodomésticos', icon: Zap }
@@ -6214,12 +6415,7 @@ function LandingPage({
               </h2>
               <div className="h-1.5 w-32 bg-primary rounded-full mb-6" />
               <p className="text-xl text-slate-500 font-medium max-w-2xl leading-relaxed">
-                {activeView === 'catalogue' 
-                   ? 'Explora todos nuestros productos disponibles en preventa y entrega inmediata.'
-                   : activeView === 'offers'
-                     ? 'Los mejores precios del mercado en equipos seleccionados. Actualizado semanalmente.'
-                     : `Mostrando la mejor selección de ${activeCategory?.toLowerCase()} disponibles.`
-                }
+                {displayDescription}
               </p>
             </div>
 
@@ -6621,12 +6817,54 @@ function LandingPage({
                     className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-6 py-4 outline-none focus:ring-2 focus:ring-primary/20 transition-all resize-none"
                   />
                 </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 ml-1">Fotos del equipo (Opcional, máx 2)</label>
+                  <div className="flex gap-4">
+                    {repairImages.map((img, idx) => (
+                      <div key={idx} className="w-20 h-20 rounded-2xl bg-slate-100 relative group overflow-hidden border border-slate-100 shadow-sm">
+                        <img src={img} alt="Preview" className="w-full h-full object-cover" />
+                        <button 
+                          type="button"
+                          onClick={() => removeRepairImage(idx)}
+                          className="absolute inset-0 bg-red-500/80 text-white opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity"
+                        >
+                          <Trash2 className="w-5 h-5" />
+                        </button>
+                      </div>
+                    ))}
+                    {repairImages.length < 2 && (
+                      <div 
+                        onClick={() => repairFileRef.current?.click()}
+                        className="w-20 h-20 rounded-2xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center cursor-pointer hover:border-primary/50 transition-all text-slate-400 group"
+                      >
+                        <Camera className="w-6 h-6 group-hover:scale-110 transition-transform" />
+                        <span className="text-[8px] font-bold mt-1 uppercase">Subir</span>
+                      </div>
+                    )}
+                  </div>
+                  <input 
+                    type="file" 
+                    ref={repairFileRef} 
+                    onChange={handleRepairImageChange} 
+                    className="hidden" 
+                    accept="image/*" 
+                    multiple 
+                  />
+                </div>
                 <button 
                   type="submit"
-                  className="w-full bg-primary text-white py-5 rounded-2xl font-bold hover:bg-primary/90 transition-all shadow-xl shadow-primary/20 flex items-center justify-center gap-3 mt-4"
+                  disabled={isRepairUploading}
+                  className="w-full bg-primary text-white py-5 rounded-2xl font-bold hover:bg-primary/90 transition-all shadow-xl shadow-primary/20 flex items-center justify-center gap-3 mt-4 disabled:opacity-50"
                 >
-                  <MessageCircle className="w-6 h-6" />
-                  Enviar por WhatsApp
+                  {isRepairUploading ? (
+                    <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  ) : (
+                    <>
+                      <MessageCircle className="w-6 h-6" />
+                      Enviar por WhatsApp
+                    </>
+                  )}
                 </button>
               </form>
             </motion.div>
