@@ -5482,9 +5482,9 @@ function LandingPage({
   const filteredProducts = inventory.filter((p: any) => {
     const matchesBranch = filterBranchId ? p.branchId === filterBranchId : true;
     const matchesSearch = searchTerm 
-      ? (p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-         p.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
-         p.brand.toLowerCase().includes(searchTerm.toLowerCase()))
+      ? (p.name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+         p.category?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+         p.brand?.toLowerCase().includes(searchTerm.toLowerCase()))
       : true;
 
     if (!matchesSearch) return false;
@@ -5882,14 +5882,14 @@ function LandingPage({
                 </button>
               </div>
 
-              <div className="relative w-full max-w-xl">
-                <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
+              <div className="relative w-full max-w-2xl mt-8">
+                <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-400 w-6 h-6" />
                 <input 
                   type="text" 
-                  placeholder="Buscar equipos, marcas, accesorios..." 
+                  placeholder="¿Buscas un equipo o accesorio específico?" 
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-14 pr-6 py-4 rounded-2xl border-2 border-slate-100 focus:border-primary/50 focus:ring-4 focus:ring-primary/10 outline-none text-lg bg-white shadow-xl shadow-slate-200/50 transition-all"
+                  className="w-full pl-16 pr-8 py-5 rounded-[2rem] border-2 border-slate-100 focus:border-primary/50 focus:ring-4 focus:ring-primary/10 outline-none text-xl bg-white shadow-2xl shadow-slate-200/50 transition-all font-medium"
                 />
               </div>
             </motion.div>
@@ -5961,9 +5961,9 @@ function LandingPage({
         const branchProducts = inventory.filter((p: any) => {
           const matchesBranch = p.branchId === branch.id;
           const matchesSearch = searchTerm 
-            ? (p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-               p.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
-               p.brand.toLowerCase().includes(searchTerm.toLowerCase()))
+            ? (p.name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+               p.category?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+               p.brand?.toLowerCase().includes(searchTerm.toLowerCase()))
             : true;
           return matchesBranch && matchesSearch;
         }).slice(0, 8);
