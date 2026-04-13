@@ -6161,7 +6161,7 @@ function LandingPage({
                 <button 
                   onClick={handleCheckRepair}
                   disabled={isSearchingRepair}
-                  className="bg-white text-slate-900 px-8 py-4 rounded-2xl font-bold hover:bg-primary hover:text-white transition-all disabled:opacity-50 flex items-center justify-center min-w-[140px]"
+                  className="bg-white text-slate-900 px-8 py-4 rounded-2xl font-bold hover:bg-primary hover:text-white transition-all disabled:opacity-50 flex items-center justify-center min-w-[140px] notranslate"
                 >
                   {isSearchingRepair ? (
                     <div className="w-5 h-5 border-2 border-slate-900 border-t-transparent rounded-full animate-spin" />
