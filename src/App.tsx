@@ -5870,7 +5870,7 @@ function LandingPage({
                 Venta de equipos de última generación, accesorios premium y el mejor servicio técnico especializado. 
                 Visítanos en cualquiera de nuestras sucursales.
               </p>
-              <div className="flex flex-col sm:flex-row flex-wrap gap-4 mb-10">
+              <div className="flex flex-col sm:flex-row flex-wrap gap-4">
                 <a href="#tiendas" className="w-full sm:w-auto text-center bg-slate-900 text-white px-8 py-4 rounded-2xl font-bold hover:bg-slate-800 transition-all">
                   Ver Tiendas
                 </a>
@@ -5880,17 +5880,6 @@ function LandingPage({
                 >
                   Ver Catálogo
                 </button>
-              </div>
-
-              <div className="relative w-full max-w-2xl mt-8">
-                <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-400 w-6 h-6" />
-                <input 
-                  type="text" 
-                  placeholder="¿Buscas un equipo o accesorio específico?" 
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-16 pr-8 py-5 rounded-[2rem] border-2 border-slate-100 focus:border-primary/50 focus:ring-4 focus:ring-primary/10 outline-none text-xl bg-white shadow-2xl shadow-slate-200/50 transition-all font-medium"
-                />
               </div>
             </motion.div>
             
@@ -5958,15 +5947,7 @@ function LandingPage({
 
       {/* Productos por Sucursal */}
       {branches.map((branch: any) => {
-        const branchProducts = inventory.filter((p: any) => {
-          const matchesBranch = p.branchId === branch.id;
-          const matchesSearch = searchTerm 
-            ? (p.name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
-               p.category?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-               p.brand?.toLowerCase().includes(searchTerm.toLowerCase()))
-            : true;
-          return matchesBranch && matchesSearch;
-        }).slice(0, 8);
+        const branchProducts = inventory.filter((p: any) => p.branchId === branch.id).slice(0, 8);
         if (branchProducts.length === 0) return null;
         return (
           <section key={branch.id} className="py-16 px-4 md:px-8 max-w-7xl mx-auto">
