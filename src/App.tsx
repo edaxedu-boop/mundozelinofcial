@@ -6299,8 +6299,9 @@ function LandingPage({
                 <cat.icon className="w-8 h-8" />
               </div>
               <h4 className={cn(
-                "font-bold transition-colors",
-                activeCategory === cat.name ? "text-primary text-lg" : "text-slate-900"
+                "font-bold transition-colors leading-tight",
+                activeCategory === cat.name ? "text-primary" : "text-slate-900",
+                "text-[11px] sm:text-sm md:text-base"
               )}>{cat.name}</h4>
             </div>
           ))}
