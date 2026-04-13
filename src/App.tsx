@@ -5430,6 +5430,7 @@ function LandingPage({
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [activeView, setActiveView] = useState<'home' | 'catalogue' | 'offers' | 'category'>('home');
+  const [searchTerm, setSearchTerm] = useState('');
 
   const [filterBranchId, setFilterBranchId] = useState<string | null>(null);
   const [isRepairModalOpen, setIsRepairModalOpen] = useState(false);
@@ -5480,6 +5481,14 @@ function LandingPage({
 
   const filteredProducts = inventory.filter((p: any) => {
     const matchesBranch = filterBranchId ? p.branchId === filterBranchId : true;
+    const matchesSearch = searchTerm 
+      ? (p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+         p.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
+         p.brand.toLowerCase().includes(searchTerm.toLowerCase()))
+      : true;
+
+    if (!matchesSearch) return false;
+
     if (activeView === 'catalogue') return matchesBranch;
     if (activeView === 'offers') return matchesBranch && (p.category === 'Ofertas' || p.price < 500);
     if (activeView === 'category') return matchesBranch && p.category === activeCategory;
@@ -5861,7 +5870,7 @@ function LandingPage({
                 Venta de equipos de última generación, accesorios premium y el mejor servicio técnico especializado. 
                 Visítanos en cualquiera de nuestras sucursales.
               </p>
-              <div className="flex flex-col sm:flex-row flex-wrap gap-4">
+              <div className="flex flex-col sm:flex-row flex-wrap gap-4 mb-10">
                 <a href="#tiendas" className="w-full sm:w-auto text-center bg-slate-900 text-white px-8 py-4 rounded-2xl font-bold hover:bg-slate-800 transition-all">
                   Ver Tiendas
                 </a>
@@ -5871,6 +5880,17 @@ function LandingPage({
                 >
                   Ver Catálogo
                 </button>
+              </div>
+
+              <div className="relative max-w-md">
+                <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
+                <input 
+                  type="text" 
+                  placeholder="Buscar equipos, marcas..." 
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full pl-14 pr-6 py-4 rounded-2xl border-2 border-slate-100 focus:border-primary/50 focus:ring-4 focus:ring-primary/10 outline-none text-lg bg-white shadow-xl shadow-slate-200/50 transition-all"
+                />
               </div>
             </motion.div>
             
@@ -5938,7 +5958,15 @@ function LandingPage({
 
       {/* Productos por Sucursal */}
       {branches.map((branch: any) => {
-        const branchProducts = inventory.filter((p: any) => p.branchId === branch.id).slice(0, 8);
+        const branchProducts = inventory.filter((p: any) => {
+          const matchesBranch = p.branchId === branch.id;
+          const matchesSearch = searchTerm 
+            ? (p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+               p.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
+               p.brand.toLowerCase().includes(searchTerm.toLowerCase()))
+            : true;
+          return matchesBranch && matchesSearch;
+        }).slice(0, 8);
         if (branchProducts.length === 0) return null;
         return (
           <section key={branch.id} className="py-16 px-4 md:px-8 max-w-7xl mx-auto">
@@ -6030,7 +6058,7 @@ function LandingPage({
           animate={{ opacity: 1, y: 0 }}
           className="py-12 px-4 md:px-8 max-w-7xl mx-auto min-h-[70vh]"
         >
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-8 mb-16 pt-8">
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-8 mb-16 pt-8">
             <div className="flex-1">
               <button 
                 onClick={() => handleSetView('home')}
@@ -6051,6 +6079,31 @@ function LandingPage({
                      : `Mostrando la mejor selección de ${activeCategory?.toLowerCase()} disponibles.`
                 }
               </p>
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-4 w-full md:w-auto">
+              <div className="relative flex-1 sm:w-80">
+                <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
+                <input 
+                  type="text" 
+                  placeholder="Buscar en esta categoría..." 
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full pl-14 pr-6 py-4 rounded-2xl border-2 border-slate-100 focus:border-primary/50 focus:ring-4 focus:ring-primary/10 outline-none bg-white shadow-lg shadow-slate-200/50 transition-all font-medium"
+                />
+              </div>
+              {activeView === 'catalogue' && (
+                <select 
+                  value={filterBranchId || ''}
+                  onChange={(e) => setFilterBranchId(e.target.value || null)}
+                  className="px-6 py-4 rounded-2xl border-2 border-slate-100 focus:border-primary/50 focus:ring-4 focus:ring-primary/10 outline-none bg-white font-bold text-slate-700 shadow-lg shadow-slate-200/50 cursor-pointer"
+                >
+                  <option value="">Todas las Tiendas</option>
+                  {branches.map((b: any) => (
+                    <option key={b.id} value={b.id}>{b.name}</option>
+                  ))}
+                </select>
+              )}
             </div>
           </div>
 
