@@ -5882,11 +5882,11 @@ function LandingPage({
                 </button>
               </div>
 
-              <div className="relative max-w-md">
+              <div className="relative w-full max-w-xl">
                 <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
                 <input 
                   type="text" 
-                  placeholder="Buscar equipos, marcas..." 
+                  placeholder="Buscar equipos, marcas, accesorios..." 
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="w-full pl-14 pr-6 py-4 rounded-2xl border-2 border-slate-100 focus:border-primary/50 focus:ring-4 focus:ring-primary/10 outline-none text-lg bg-white shadow-xl shadow-slate-200/50 transition-all"
@@ -6058,7 +6058,7 @@ function LandingPage({
           animate={{ opacity: 1, y: 0 }}
           className="py-12 px-4 md:px-8 max-w-7xl mx-auto min-h-[70vh]"
         >
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-8 mb-16 pt-8">
+          <div className="flex flex-col gap-8 mb-16 pt-8">
             <div className="flex-1">
               <button 
                 onClick={() => handleSetView('home')}
@@ -6081,28 +6081,30 @@ function LandingPage({
               </p>
             </div>
 
-            <div className="flex flex-col sm:flex-row gap-4 w-full md:w-auto">
-              <div className="relative flex-1 sm:w-80">
-                <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
+            <div className="flex flex-col sm:flex-row gap-6 w-full">
+              <div className="relative flex-1">
+                <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-400 w-6 h-6" />
                 <input 
                   type="text" 
-                  placeholder="Buscar en esta categoría..." 
+                  placeholder="¿Qué estás buscando? Ingresa nombre, marca o categoría..." 
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-14 pr-6 py-4 rounded-2xl border-2 border-slate-100 focus:border-primary/50 focus:ring-4 focus:ring-primary/10 outline-none bg-white shadow-lg shadow-slate-200/50 transition-all font-medium"
+                  className="w-full pl-16 pr-8 py-5 rounded-[2rem] border-2 border-slate-100 focus:border-primary/50 focus:ring-4 focus:ring-primary/10 outline-none bg-white shadow-xl shadow-slate-200/50 transition-all text-lg font-medium"
                 />
               </div>
               {activeView === 'catalogue' && (
-                <select 
-                  value={filterBranchId || ''}
-                  onChange={(e) => setFilterBranchId(e.target.value || null)}
-                  className="px-6 py-4 rounded-2xl border-2 border-slate-100 focus:border-primary/50 focus:ring-4 focus:ring-primary/10 outline-none bg-white font-bold text-slate-700 shadow-lg shadow-slate-200/50 cursor-pointer"
-                >
-                  <option value="">Todas las Tiendas</option>
-                  {branches.map((b: any) => (
-                    <option key={b.id} value={b.id}>{b.name}</option>
-                  ))}
-                </select>
+                <div className="sm:w-72">
+                  <select 
+                    value={filterBranchId || ''}
+                    onChange={(e) => setFilterBranchId(e.target.value || null)}
+                    className="w-full px-8 py-5 rounded-[2rem] border-2 border-slate-100 focus:border-primary/50 focus:ring-4 focus:ring-primary/10 outline-none bg-white font-bold text-slate-700 shadow-xl shadow-slate-200/50 cursor-pointer appearance-none text-center"
+                  >
+                    <option value="">Todas las Tiendas</option>
+                    {branches.map((b: any) => (
+                      <option key={b.id} value={b.id}>{b.name}</option>
+                    ))}
+                  </select>
+                </div>
               )}
             </div>
           </div>
